@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Incidencia - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Nueva Incidencia</h1>
+    <p class="page-subtitle">Crear una nueva incidencia en el sistema</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Información de la Incidencia</h2>
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="titulo" class="form-label">Título *</label>
+            <input type="text" id="titulo" name="titulo" class="form-control" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="descripcion" class="form-label">Descripción *</label>
+            <textarea id="descripcion" name="descripcion" class="form-control" required rows="5"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="cliente_id" class="form-label">Cliente *</label>
+            <select id="cliente_id" name="cliente_id" class="form-control" required onchange="cargarSedes()">
+                <option value="">Seleccionar cliente...</option>
+                {% for cliente in clientes %}
+                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="sede_id" class="form-label">Sede *</label>
+            <select id="sede_id" name="sede_id" class="form-control" required>
+                <option value="">Primero seleccione un cliente</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="sistema_id" class="form-label">Sistema *</label>
+            <select id="sistema_id" name="sistema_id" class="form-control" required>
+                <option value="">Seleccionar sistema...</option>
+                {% for sistema in sistemas %}
+                <option value="{{ sistema.id }}">{{ sistema.nombre }}</option>
+                {% endfor %}
+            </select>
+            <small style="color: #666;">Sistema al que pertenece esta incidencia</small>
+        </div>
+        
+        {% if current_user.rol.nombre in ['Administrador', 'Coordinador'] %}
+        <div class="form-group">
+            <label for="tecnico_asignado" class="form-label">Técnico Asignado</label>
+            <select id="tecnico_asignado" name="tecnico_asignado" class="form-control">
+                <option value="">Sin asignar</option>
+                {% for tecnico in tecnicos %}
+                <option value="{{ tecnico.id }}">
+                    {{ tecnico.nombre }} ({{ tecnico.correo }})
+                </option>
+                {% endfor %}
+            </select>
+            <small style="color: #666;">Asignar técnico responsable (opcional)</small>
+        </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="adjuntos" class="form-label">Archivos Adjuntos</label>
+            <input type="file" id="adjuntos" name="adjuntos" class="form-control" multiple accept="image/*,.pdf,.doc,.docx" onchange="mostrarTitulosImagenes()">
+            <small style="color: #666;">Puede seleccionar múltiples archivos. Formatos permitidos: imágenes, PDF, Word</small>
+        </div>
+        
+        <div id="titulos-imagenes" style="display: none;">
+            <h4>Configuración de Imágenes</h4>
+            <p style="color: #666; font-size: 0.9rem;">Configure cómo se mostrarán las imágenes en los informes:</p>
+            
+            <div class="form-group">
+                <label class="form-label">Configuración de Imágenes</label>
+                <p style="color: #666; font-size: 0.9rem;">Configure cómo se mostrarán las imágenes. Puede crear múltiples collages y tener imágenes individuales.</p>
+            </div>
+            
+            <div id="configuracion-imagenes">
+                <div class="form-group">
+                    <label class="form-label">Configuración de Imágenes</label>
+                    <div id="lista-imagenes"></div>
+                </div>
+                
+                <div class="form-group">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="crearNuevoCollage()">
+                        <i class="fas fa-plus"></i> Crear Nuevo Collage
+                    </button>
+                </div>
+                
+                <div id="collages-configurados"></div>
+                
+                <div class="form-group">
+                    <label class="form-label">Resumen de Configuración</label>
+                    <div id="resumen-configuracion" style="background-color: #f8f9fa; padding: 1rem; border-radius: 4px; font-size: 0.9rem;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Crear Incidencia</button>
+            <a href="{{ url_for('incidencias') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Datos de sedes por cliente
+const sedesPorCliente = {
+    {% for cliente in clientes %}
+    {{ cliente.id }}: [
+        {% for sede in cliente.sedes %}
+        {id: {{ sede.id }}, nombre: "{{ sede.nombre }}"}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+function cargarSedes() {
+    const clienteId = document.getElementById('cliente_id').value;
+    const sedeSelect = document.getElementById('sede_id');
+    
+    // Limpiar opciones actuales
+    sedeSelect.innerHTML = '<option value="">Seleccionar sede...</option>';
+    
+    if (clienteId && sedesPorCliente[clienteId]) {
+        sedesPorCliente[clienteId].forEach(sede => {
+            const option = document.createElement('option');
+            option.value = sede.id;
+            option.textContent = sede.nombre;
+            sedeSelect.appendChild(option);
+        });
+    }
+}
+
+let contadorCollages = 0;
+let imagenesDisponibles = [];
+
+function mostrarTitulosImagenes() {
+    const archivos = document.getElementById('adjuntos').files;
+    const titulosDiv = document.getElementById('titulos-imagenes');
+    const listaImagenes = document.getElementById('lista-imagenes');
+    const collagesConfigurados = document.getElementById('collages-configurados');
+    
+    if (archivos.length === 0) {
+        titulosDiv.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar sección de configuración
+    titulosDiv.style.display = 'block';
+    listaImagenes.innerHTML = '';
+    collagesConfigurados.innerHTML = '';
+    
+    const imagenes = Array.from(archivos).filter(archivo => archivo.type.startsWith('image/'));
+    
+    if (imagenes.length === 0) {
+        titulosDiv.style.display = 'none';
+        return;
+    }
+    
+    // Guardar imágenes disponibles
+    imagenesDisponibles = imagenes;
+    
+    // Mostrar lista de imágenes disponibles
+    imagenes.forEach((archivo, index) => {
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        div.style.marginBottom = '0.5rem';
+        div.style.padding = '0.5rem';
+        div.style.border = '1px solid #ddd';
+        div.style.borderRadius = '4px';
+        div.id = `imagen-${index}`;
+        
+        div.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="flex: 1;">
+                    <strong>${archivo.name}</strong>
+                    <div style="font-size: 0.8rem; color: #666;">
+                        Título: <input type="text" name="titulos_imagenes" class="form-control" 
+                               placeholder="Título de la imagen" 
+                               value="${archivo.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ')}"
+                               style="display: inline-block; width: 200px; margin-left: 0.5rem;">
+                    </div>
+                </div>
+                <div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="radio" name="modo_${index}" value="individual" checked onchange="actualizarModoImagen(${index})">
+                        <span>Individual</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="radio" name="modo_${index}" value="collage" onchange="actualizarModoImagen(${index})">
+                        <span>En Collage</span>
+                    </label>
+                </div>
+            </div>
+        `;
+        
+        listaImagenes.appendChild(div);
+    });
+}
+
+function actualizarModoImagen(index) {
+    const modoIndividual = document.querySelector(`input[name="modo_${index}"][value="individual"]`);
+    const modoCollage = document.querySelector(`input[name="modo_${index}"][value="collage"]`);
+    
+    if (modoCollage.checked) {
+        // Si se selecciona collage, mostrar opciones de collage
+        mostrarOpcionesCollage(index);
+    }
+}
+
+function mostrarOpcionesCollage(index) {
+    // Crear selector de collage existente o nuevo
+    const div = document.createElement('div');
+    div.id = `opciones-collage-${index}`;
+    div.style.marginTop = '0.5rem';
+    div.style.padding = '0.5rem';
+    div.style.backgroundColor = '#f8f9fa';
+    div.style.borderRadius = '4px';
+    
+    div.innerHTML = `
+        <label class="form-label">Seleccionar Collage:</label>
+        <select class="form-control" name="collage_${index}" onchange="actualizarSeleccionCollage(${index})">
+            <option value="">Crear nuevo collage</option>
+        </select>
+    `;
+    
+    // Agregar collages existentes
+    const collagesExistentes = document.querySelectorAll('[id^="collage-"]');
+    collagesExistentes.forEach(collage => {
+        const option = document.createElement('option');
+        option.value = collage.id;
+        option.textContent = `Collage ${collage.id.split('-')[1]}`;
+        div.querySelector('select').appendChild(option);
+    });
+    
+    document.getElementById(`imagen-${index}`).appendChild(div);
+}
+
+function crearNuevoCollage() {
+    contadorCollages++;
+    const collageId = `collage-${contadorCollages}`;
+    
+    const div = document.createElement('div');
+    div.id = collageId;
+    div.className = 'form-group';
+    div.style.marginBottom = '1rem';
+    div.style.padding = '1rem';
+    div.style.border = '2px solid var(--dark-green)';
+    div.style.borderRadius = '8px';
+    div.style.backgroundColor = '#f8f9fa';
+    
+    div.innerHTML = `
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+            <h5 style="color: var(--dark-green); margin: 0;">Collage ${contadorCollages}</h5>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarCollage('${collageId}')">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Título del Collage</label>
+            <input type="text" name="titulo_collage_${contadorCollages}" class="form-control" 
+                   placeholder="Ej: Instalación completa del sistema">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Imágenes para este Collage</label>
+            <div id="imagenes-collage-${contadorCollages}"></div>
+        </div>
+    `;
+    
+    document.getElementById('collages-configurados').appendChild(div);
+    
+    // Actualizar opciones de collage en todas las imágenes
+    actualizarOpcionesCollage();
+    
+    // Mostrar imágenes disponibles para este collage
+    mostrarImagenesParaCollage(contadorCollages);
+    
+    // Actualizar resumen
+    actualizarResumen();
+}
+
+function mostrarImagenesParaCollage(collageNum) {
+    const div = document.getElementById(`imagenes-collage-${collageNum}`);
+    div.innerHTML = '';
+    
+    imagenesDisponibles.forEach((archivo, index) => {
+        const checkboxDiv = document.createElement('div');
+        checkboxDiv.style.marginBottom = '0.5rem';
+        
+        checkboxDiv.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" name="imagenes_collage_${collageNum}" value="${archivo.name}" checked>
+                <span>${archivo.name}</span>
+            </label>
+        `;
+        
+        div.appendChild(checkboxDiv);
+    });
+}
+
+function actualizarOpcionesCollage() {
+    const collagesExistentes = document.querySelectorAll('[id^="collage-"]');
+    
+    // Actualizar todos los selects de collage
+    document.querySelectorAll('select[name^="collage_"]').forEach(select => {
+        // Limpiar opciones existentes excepto la primera
+        while (select.children.length > 1) {
+            select.removeChild(select.lastChild);
+        }
+        
+        // Agregar collages existentes
+        collagesExistentes.forEach(collage => {
+            const option = document.createElement('option');
+            option.value = collage.id;
+            option.textContent = `Collage ${collage.id.split('-')[1]}`;
+            select.appendChild(option);
+        });
+    });
+}
+
+function eliminarCollage(collageId) {
+    document.getElementById(collageId).remove();
+    actualizarOpcionesCollage();
+    actualizarResumen();
+}
+
+function actualizarSeleccionCollage(index) {
+    const select = document.querySelector(`select[name="collage_${index}"]`);
+    const collageSeleccionado = select.value;
+    
+    if (collageSeleccionado) {
+        // Mostrar opciones para agregar a collage existente
+        const div = document.createElement('div');
+        div.id = `agregar-collage-${index}`;
+        div.style.marginTop = '0.5rem';
+        
+        div.innerHTML = `
+            <button type="button" class="btn btn-sm btn-primary" onclick="agregarImagenACollage(${index}, '${collageSeleccionado}')">
+                Agregar a ${collageSeleccionado}
+            </button>
+        `;
+        
+        // Eliminar div anterior si existe
+        const divAnterior = document.getElementById(`agregar-collage-${index}`);
+        if (divAnterior) {
+            divAnterior.remove();
+        }
+        
+        document.getElementById(`opciones-collage-${index}`).appendChild(div);
+    }
+}
+
+function agregarImagenACollage(index, collageId) {
+    const archivo = imagenesDisponibles[index];
+    const collageNum = collageId.split('-')[1];
+    
+    // Agregar checkbox al collage
+    const div = document.getElementById(`imagenes-collage-${collageNum}`);
+    const checkboxDiv = document.createElement('div');
+    checkboxDiv.style.marginBottom = '0.5rem';
+    
+    checkboxDiv.innerHTML = `
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" name="imagenes_collage_${collageNum}" value="${archivo.name}" checked>
+            <span>${archivo.name}</span>
+        </label>
+    `;
+    
+    div.appendChild(checkboxDiv);
+}
+
+function actualizarResumen() {
+    const resumenDiv = document.getElementById('resumen-configuracion');
+    if (!resumenDiv) return;
+    
+    let resumen = '<strong>Configuración actual:</strong><br>';
+    
+    // Contar imágenes individuales
+    const imagenesIndividuales = document.querySelectorAll('input[name^="modo_"]:checked[value="individual"]');
+    resumen += `📷 Imágenes individuales: ${imagenesIndividuales.length}<br>`;
+    
+    // Contar collages
+    const collages = document.querySelectorAll('[id^="collage-"]');
+    resumen += `🖼️ Collages: ${collages.length}<br>`;
+    
+    if (collages.length > 0) {
+        resumen += '<br><strong>Collages configurados:</strong><br>';
+        collages.forEach((collage, index) => {
+            const titulo = collage.querySelector('input[name^="titulo_collage_"]')?.value || 'Sin título';
+            const imagenes = collage.querySelectorAll('input[name^="imagenes_collage_"]:checked');
+            resumen += `   ${index + 1}. ${titulo} (${imagenes.length} imágenes)<br>`;
+        });
+    }
+    
+    resumenDiv.innerHTML = resumen;
+}
+
+// Actualizar resumen cuando cambie algo
+document.addEventListener('change', function(e) {
+    if (e.target.name.startsWith('modo_') || 
+        e.target.name.startsWith('titulo_collage_') || 
+        e.target.name.startsWith('imagenes_collage_')) {
+        actualizarResumen();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Índices{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestión de Índices</h1>
+        <a href="{{ url_for('nuevo_indice') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Índice
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Índices Configurados</h2>
+        </div>
+        <div class="card-body">
+            {% if indices %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Prefijo</th>
+                                <th>Número Actual</th>
+                                <th>Próximo Índice</th>
+                                <th>Incidencias</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for indice in indices %}
+                            <tr>
+                                <td>{{ indice.id }}</td>
+                                <td><strong>{{ indice.prefijo }}</strong></td>
+                                <td>{{ indice.numero_actual }}</td>
+                                <td><code>{{ indice.prefijo }}_{(indice.numero_actual + 1):06d}</code></td>
+                                <td>
+                                    {% set count = indice.numero_actual %}
+                                    <span class="badge bg-info">{{ count }} incidencia{{ 's' if count != 1 else '' }}</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('editar_indice', id=indice.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        <a href="{{ url_for('eliminar_indice', id=indice.id) }}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('¿Está seguro de eliminar este índice?')">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-list-alt fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No hay índices configurados</h4>
+                    <p class="text-muted">Crea tu primer índice para poder generar incidencias</p>
+                    <a href="{{ url_for('nuevo_indice') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primer Índice
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title">Información sobre Índices</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>¿Qué son los índices?</h5>
+                    <p>Los índices son códigos únicos que se asignan automáticamente a cada incidencia. Permiten identificar y organizar las incidencias de manera sistemática.</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Formato de Índices</h5>
+                    <p>Los índices siguen el formato: <code>PREFIJO_000001</code></p>
+                    <ul>
+                        <li><strong>PREFIJO:</strong> Identificador del tipo de incidencia (ej: INC, SOP, MANT)</li>
+                        <li><strong>Número:</strong> Secuencia numérica de 6 dígitos</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+                <h6><i class="fas fa-info-circle"></i> Ejemplos de índices:</h6>
+                <ul class="mb-0">
+                    <li><code>INC_000001</code> - Primera incidencia general</li>
+                    <li><code>SOP_000001</code> - Primera incidencia de soporte</li>
+                    <li><code>MANT_000001</code> - Primera incidencia de mantenimiento</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

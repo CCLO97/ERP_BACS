@@ -1,0 +1,14 @@
+# Configuración de la base de datos
+DB_HOST=localhost
+DB_USER=tu_usuario_mysql
+DB_PASSWORD=tu_contraseña_mysql
+DB_NAME=erp_bacs
+
+# Configuración de la aplicación
+SECRET_KEY=tu_clave_secreta_muy_segura_aqui_2024
+FLASK_ENV=development
+FLASK_DEBUG=True
+
+# Usuario inicial del sistema (administrador)
+INITIAL_USER_EMAIL=admin@tuempresa.com
+INITIAL_USER_PASSWORD=tu_contraseña_segura_aqui

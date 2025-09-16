@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Editar Usuario</h1>
+        <a href="{{ url_for('usuarios') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Usuarios
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Editar Usuario: {{ usuario.nombre }}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label for="nombre" class="form-label">Nombre Completo *</label>
+                            <input type="text" id="nombre" name="nombre" class="form-control" 
+                                   value="{{ usuario.nombre }}" required maxlength="100">
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="tipo_documento" class="form-label">Tipo de Documento *</label>
+                            <select id="tipo_documento" name="tipo_documento" class="form-control" required>
+                                <option value="CC" {% if usuario.tipo_documento == 'CC' %}selected{% endif %}>Cédula de Ciudadanía</option>
+                                <option value="CE" {% if usuario.tipo_documento == 'CE' %}selected{% endif %}>Cédula de Extranjería</option>
+                                <option value="TI" {% if usuario.tipo_documento == 'TI' %}selected{% endif %}>Tarjeta de Identidad</option>
+                                <option value="RC" {% if usuario.tipo_documento == 'RC' %}selected{% endif %}>Registro Civil</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="numero_documento" class="form-label">Número de Documento *</label>
+                            <input type="text" id="numero_documento" name="numero_documento" class="form-control" 
+                                   value="{{ usuario.numero_documento }}" required maxlength="20">
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="telefono" class="form-label">Teléfono *</label>
+                            <input type="tel" id="telefono" name="telefono" class="form-control" 
+                                   value="{{ usuario.telefono }}" required maxlength="20">
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="correo" class="form-label">Correo Electrónico *</label>
+                            <input type="email" id="correo" name="correo" class="form-control" 
+                                   value="{{ usuario.correo }}" required maxlength="120">
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="password" class="form-label">Nueva Contraseña</label>
+                            <input type="password" id="password" name="password" class="form-control" minlength="6">
+                            <small style="color: #666;">Dejar en blanco para mantener la contraseña actual. Mínimo 6 caracteres.</small>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="rol_id" class="form-label">Rol *</label>
+                            <select id="rol_id" name="rol_id" class="form-control" required>
+                                <option value="">Seleccionar rol...</option>
+                                {% for rol in roles %}
+                                <option value="{{ rol.id }}" {% if usuario.rol_id == rol.id %}selected{% endif %}>
+                                    {{ rol.nombre }} - {{ rol.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                            <a href="{{ url_for('usuarios') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Información del Usuario</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>ID:</strong></td>
+                            <td>{{ usuario.id }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nombre:</strong></td>
+                            <td>{{ usuario.nombre }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Documento:</strong></td>
+                            <td>{{ usuario.tipo_documento }} {{ usuario.numero_documento }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Teléfono:</strong></td>
+                            <td>{{ usuario.telefono }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Correo:</strong></td>
+                            <td>{{ usuario.correo }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Rol Actual:</strong></td>
+                            <td>
+                                <span class="badge bg-primary">{{ usuario.rol.nombre }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fecha Creación:</strong></td>
+                            <td>{{ usuario.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h3 class="card-title">Información de Roles</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h5>Administrador</h5>
+                        <ul class="list-unstyled">
+                            <li>• Crear, editar o eliminar perfiles</li>
+                            <li>• Gestionar incidencias</li>
+                            <li>• Descargar informes</li>
+                            <li>• Asignar incidencias</li>
+                            <li>• Crear índices</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Coordinador</h5>
+                        <ul class="list-unstyled">
+                            <li>• Crear y editar incidencias</li>
+                            <li>• Asignar incidencias a técnicos</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Técnico</h5>
+                        <ul class="list-unstyled">
+                            <li>• Editar incidencias asignadas</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Usuario</h5>
+                        <ul class="list-unstyled">
+                            <li>• Ver incidencias propias</li>
+                            <li>• Acceso básico al sistema</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

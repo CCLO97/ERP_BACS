@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Gestión de Clientes</h1>
+    <p class="page-subtitle">Administra los clientes y sus sedes</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="card-title">Lista de Clientes</h2>
+            <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-primary">Nuevo Cliente</a>
+        </div>
+    </div>
+    
+    {% if clientes %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Documento</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th>Contacto Principal</th>
+                    <th>Sedes</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.nombre }}</td>
+                    <td>{{ cliente.tipo_documento }} {{ cliente.numero_documento }}</td>
+                    <td>{{ cliente.correo }}</td>
+                    <td>{{ cliente.telefono }}</td>
+                    <td>{{ cliente.contacto_principal or 'N/A' }}</td>
+                    <td>
+                        <span class="status-badge status-abierta">{{ cliente.sedes|length }} sede(s)</span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('sedes_cliente', id=cliente.id) }}" class="btn btn-sm btn-secondary">Ver Sedes</a>
+                        <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                        <form method="POST" action="{{ url_for('eliminar_cliente', id=cliente.id) }}" style="display: inline;" onsubmit="return confirm('¿Está seguro de eliminar este cliente?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% else %}
+    <div class="text-center" style="padding: 3rem;">
+        <p style="color: #666; font-size: 1.1rem;">No hay clientes registrados</p>
+        <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-primary mt-1">Crear Primer Cliente</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

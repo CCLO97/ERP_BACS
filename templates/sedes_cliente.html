@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Sedes de {{ cliente.nombre }} - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Sedes de {{ cliente.nombre }}</h1>
+    <p class="page-subtitle">Gestiona las sedes del cliente</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="card-title">Lista de Sedes</h2>
+            <a href="{{ url_for('nueva_sede', id=cliente.id) }}" class="btn btn-primary">Nueva Sede</a>
+        </div>
+    </div>
+    
+    {% if sedes %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Dirección</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Responsable</th>
+                    <th>Incidencias</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sede in sedes %}
+                <tr>
+                    <td>{{ sede.nombre }}</td>
+                    <td>{{ sede.direccion or 'N/A' }}</td>
+                    <td>{{ sede.telefono or 'N/A' }}</td>
+                    <td>{{ sede.correo or 'N/A' }}</td>
+                    <td>{{ sede.contacto_responsable or 'N/A' }}</td>
+                    <td>
+                        <span class="status-badge status-proceso">{{ sede.incidencias|length }} incidencia(s)</span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('editar_sede', id=sede.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                        <form method="POST" action="{{ url_for('eliminar_sede', id=sede.id) }}" style="display: inline;" onsubmit="return confirm('¿Está seguro de eliminar esta sede?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% else %}
+    <div class="text-center" style="padding: 3rem;">
+        <p style="color: #666; font-size: 1.1rem;">No hay sedes registradas para este cliente</p>
+        <a href="{{ url_for('nueva_sede', id=cliente.id) }}" class="btn btn-primary mt-1">Crear Primera Sede</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Información del cliente -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Información del Cliente</h2>
+    </div>
+    <div class="d-flex justify-content-between">
+        <div>
+            <p><strong>Cliente:</strong> {{ cliente.nombre }}</p>
+            <p><strong>Documento:</strong> {{ cliente.tipo_documento }} {{ cliente.numero_documento }}</p>
+            <p><strong>Correo:</strong> {{ cliente.correo }}</p>
+        </div>
+        <div>
+            <p><strong>Teléfono:</strong> {{ cliente.telefono }}</p>
+            <p><strong>Contacto Principal:</strong> {{ cliente.contacto_principal or 'N/A' }}</p>
+            <p><strong>Cargo:</strong> {{ cliente.cargo_contacto or 'N/A' }}</p>
+        </div>
+    </div>
+    <div class="mt-2">
+        <a href="{{ url_for('clientes') }}" class="btn btn-secondary">Volver a Clientes</a>
+    </div>
+</div>
+{% endblock %}

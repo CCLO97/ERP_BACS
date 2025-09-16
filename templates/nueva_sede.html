@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Sede - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Nueva Sede</h1>
+    <p class="page-subtitle">Crear una nueva sede para {{ cliente.nombre }}</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Información de la Sede</h2>
+    </div>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="nombre" class="form-label">Nombre de la Sede *</label>
+            <input type="text" id="nombre" name="nombre" class="form-control" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="direccion" class="form-label">Dirección</label>
+            <textarea id="direccion" name="direccion" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="telefono" class="form-label">Teléfono</label>
+            <input type="tel" id="telefono" name="telefono" class="form-control" maxlength="20">
+        </div>
+        
+        <div class="form-group">
+            <label for="correo" class="form-label">Correo Electrónico</label>
+            <input type="email" id="correo" name="correo" class="form-control" maxlength="120">
+        </div>
+        
+        <div class="form-group">
+            <label for="contacto_responsable" class="form-label">Contacto Responsable</label>
+            <input type="text" id="contacto_responsable" name="contacto_responsable" class="form-control" maxlength="100">
+        </div>
+        
+        <div class="form-group">
+            <label for="cargo_responsable" class="form-label">Cargo del Responsable</label>
+            <input type="text" id="cargo_responsable" name="cargo_responsable" class="form-control" maxlength="100">
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Crear Sede</button>
+            <a href="{{ url_for('sedes_cliente', id=cliente.id) }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Información del cliente -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Cliente Asociado</h2>
+    </div>
+    <div class="d-flex justify-content-between">
+        <div>
+            <p><strong>Cliente:</strong> {{ cliente.nombre }}</p>
+            <p><strong>Documento:</strong> {{ cliente.tipo_documento }} {{ cliente.numero_documento }}</p>
+            <p><strong>Correo:</strong> {{ cliente.correo }}</p>
+        </div>
+        <div>
+            <p><strong>Teléfono:</strong> {{ cliente.telefono }}</p>
+            <p><strong>Contacto Principal:</strong> {{ cliente.contacto_principal or 'N/A' }}</p>
+            <p><strong>Sedes existentes:</strong> {{ cliente.sedes|length }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

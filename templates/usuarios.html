@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Gestión de Usuarios</h1>
+    <p class="page-subtitle">Administra los usuarios del sistema</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="card-title">Lista de Usuarios</h2>
+            <a href="{{ url_for('nuevo_usuario') }}" class="btn btn-primary">Nuevo Usuario</a>
+        </div>
+    </div>
+    
+    {% if usuarios %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Documento</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th>Rol</th>
+                    <th>Fecha Creación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.nombre }}</td>
+                    <td>{{ usuario.tipo_documento }} {{ usuario.numero_documento }}</td>
+                    <td>{{ usuario.correo }}</td>
+                    <td>{{ usuario.telefono }}</td>
+                    <td>
+                        <span class="status-badge status-{{ usuario.rol.nombre.lower() }}">
+                            {{ usuario.rol.nombre }}
+                        </span>
+                    </td>
+                    <td>{{ usuario.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <a href="{{ url_for('editar_usuario', id=usuario.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        {% if usuario.id != current_user.id %}
+                        <a href="{{ url_for('eliminar_usuario', id=usuario.id) }}" 
+                           class="btn btn-sm btn-danger"
+                           onclick="return confirm('¿Está seguro de eliminar este usuario?')">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% else %}
+    <div class="text-center" style="padding: 3rem;">
+        <p style="color: #666; font-size: 1.1rem;">No hay usuarios registrados</p>
+        <a href="{{ url_for('nuevo_usuario') }}" class="btn btn-primary mt-1">Crear Primer Usuario</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

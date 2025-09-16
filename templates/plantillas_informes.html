@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Plantillas de Informes{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">Plantillas de Informes</h3>
+                    <a href="{{ url_for('nueva_plantilla_informe') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Plantilla
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if plantillas %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Versión</th>
+                                    <th>Agrupación</th>
+                                    <th>Formato</th>
+                                    <th>Fecha Creación</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plantilla in plantillas %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ plantilla.nombre }}</strong>
+                                        {% if plantilla.logo_path %}
+                                        <i class="fas fa-image text-success ml-2" title="Tiene logo"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ plantilla.descripcion[:50] }}{% if plantilla.descripcion|length > 50 %}...{% endif %}</td>
+                                    <td>{{ plantilla.version }}</td>
+                                    <td>
+                                        <span class="badge badge-info">
+                                            {% if plantilla.agrupacion_por == 'cliente' %}Cliente
+                                            {% elif plantilla.agrupacion_por == 'sede' %}Sede
+                                            {% elif plantilla.agrupacion_por == 'estado' %}Estado
+                                            {% elif plantilla.agrupacion_por == 'tecnico' %}Técnico
+                                            {% elif plantilla.agrupacion_por == 'fecha' %}Fecha
+                                            {% else %}Sin agrupación{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ plantilla.formato_pagina }}</td>
+                                    <td>{{ plantilla.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('editar_plantilla_informe', id=plantilla.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarPlantilla({{ plantilla.id }})">
+                                                <i class="fas fa-trash"></i> Eliminar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay plantillas creadas</h4>
+                        <p class="text-muted">Crea tu primera plantilla de informe para generar documentos profesionales.</p>
+                        <a href="{{ url_for('nueva_plantilla_informe') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Crear Primera Plantilla
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function eliminarPlantilla(id) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta plantilla?')) {
+        fetch(`/plantillas-informes/${id}/eliminar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al eliminar la plantilla: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al eliminar la plantilla');
+        });
+    }
+}
+</script>
+{% endblock %}

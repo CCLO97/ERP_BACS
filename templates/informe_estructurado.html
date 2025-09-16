@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Informe Estructurado - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Generar Informe Estructurado</h1>
+    <p class="page-subtitle">Crea informes profesionales con formato estructurado por cliente, sede y sistema</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Datos del Informe</h2>
+    </div>
+    
+    <form method="POST" action="{{ url_for('informe_estructurado') }}" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">Cliente *</label>
+                    <select name="cliente_id" id="cliente-select" class="form-control" required onchange="cargarIncidencias()">
+                        <option value="">Seleccionar cliente</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Cliente (Texto) *</label>
+                    <input type="text" name="cliente" class="form-control" required placeholder="Nombre completo del cliente">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Atención *</label>
+                    <input type="text" name="atencion" class="form-control" required placeholder="Persona de contacto">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Cargo *</label>
+                    <input type="text" name="cargo" class="form-control" required placeholder="Cargo del contacto">
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">Alcance del Proyecto *</label>
+                    <textarea name="alcance" class="form-control" rows="3" required placeholder="Descripción del alcance del proyecto"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Fecha *</label>
+                    <input type="date" name="fecha" class="form-control" required value="{{ moment().format('YYYY-MM-DD') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Versión</label>
+                    <input type="text" name="version" class="form-control" value="1" placeholder="Versión del informe">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Introducción *</label>
+            <textarea name="introduccion" class="form-control" rows="4" required placeholder="Texto de introducción del informe"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Conclusiones</label>
+            <textarea name="conclusiones" class="form-control" rows="4" placeholder="Conclusiones del informe (opcional)"></textarea>
+        </div>
+        
+        <div class="form-group" id="incidencias-section" style="display: none;">
+            <label class="form-label">Incidencias a Incluir *</label>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; padding: 1rem;">
+                <div class="d-flex justify-content-between align-items-center mb-1" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                        <input type="checkbox" id="select-all-incidencias" onchange="toggleAllIncidencias()">
+                        <span>Seleccionar Todas</span>
+                    </label>
+                </div>
+                
+                <div id="incidencias-list">
+                    <!-- Las incidencias se cargarán dinámicamente -->
+                </div>
+            </div>
+            <small style="color: #666;">Seleccione las incidencias del cliente seleccionado</small>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Generar Informe Estructurado</button>
+            <a href="{{ url_for('informes') }}" class="btn btn-secondary">Volver a Informes</a>
+        </div>
+    </form>
+</div>
+
+<!-- Información sobre el formato estructurado -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Formato Estructurado</h2>
+    </div>
+    <div class="card-body">
+        <p>Este formato genera un informe profesional con la siguiente estructura:</p>
+        <ul>
+            <li><strong>Encabezado:</strong> Logo, título y versión</li>
+            <li><strong>Información del cliente:</strong> Datos de contacto y alcance</li>
+            <li><strong>Introducción:</strong> Contexto y objetivos del informe</li>
+            <li><strong>Actividades realizadas:</strong> Organizadas por:
+                <ul>
+                    <li>Sede (ej: NQS, Manizales, Cartagena)</li>
+                    <li>Sistema (ej: CCTV, Control de acceso)</li>
+                    <li>Actividad específica con descripción e imágenes</li>
+                </ul>
+            </li>
+            <li><strong>Conclusiones:</strong> Resumen y recomendaciones</li>
+        </ul>
+        <p><strong>Nota:</strong> Las imágenes se muestran con sus títulos personalizados y están centradas en el documento.</p>
+    </div>
+</div>
+
+<script>
+function cargarIncidencias() {
+    const clienteId = document.getElementById('cliente-select').value;
+    const incidenciasSection = document.getElementById('incidencias-section');
+    const incidenciasList = document.getElementById('incidencias-list');
+    
+    if (!clienteId) {
+        incidenciasSection.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar sección de incidencias
+    incidenciasSection.style.display = 'block';
+    
+    // Cargar incidencias del cliente seleccionado
+    fetch(`/api/incidencias/cliente/${clienteId}`)
+        .then(response => response.json())
+        .then(data => {
+            incidenciasList.innerHTML = '';
+            
+            if (data.length === 0) {
+                incidenciasList.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No hay incidencias para este cliente</p>';
+                return;
+            }
+            
+            data.forEach(incidencia => {
+                const div = document.createElement('div');
+                div.className = 'd-flex justify-content-between align-items-center mb-1';
+                div.style.cssText = 'padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;';
+                
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                        <input type="checkbox" name="incidencias" value="${incidencia.id}" class="incidencia-checkbox">
+                        <span>${incidencia.indice} - ${incidencia.titulo}</span>
+                    </label>
+                    <div style="display: flex; gap: 1rem; font-size: 0.875rem; color: #666;">
+                        <span>${incidencia.sede_nombre || 'Sin sede'}</span>
+                        <span>${incidencia.sistema_nombre || 'Sin sistema'}</span>
+                        <span class="status-badge status-${incidencia.estado.toLowerCase().replace(' ', '-')}">
+                            ${incidencia.estado}
+                        </span>
+                        <span>${new Date(incidencia.fecha_inicio).toLocaleDateString()}</span>
+                    </div>
+                `;
+                
+                incidenciasList.appendChild(div);
+            });
+            
+            // Actualizar estado del checkbox "Seleccionar Todas"
+            document.querySelectorAll('.incidencia-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const allCheckboxes = document.querySelectorAll('.incidencia-checkbox');
+                    const checkedCheckboxes = document.querySelectorAll('.incidencia-checkbox:checked');
+                    const selectAll = document.getElementById('select-all-incidencias');
+                    
+                    selectAll.checked = allCheckboxes.length === checkedCheckboxes.length;
+                });
+            });
+        })
+        .catch(error => {
+            console.error('Error cargando incidencias:', error);
+            incidenciasList.innerHTML = '<p style="color: red; text-align: center; padding: 2rem;">Error cargando incidencias</p>';
+        });
+}
+
+function toggleAllIncidencias() {
+    const selectAll = document.getElementById('select-all-incidencias');
+    const checkboxes = document.querySelectorAll('.incidencia-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+// Establecer fecha actual por defecto
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInput = document.querySelector('input[name="fecha"]');
+    if (fechaInput && !fechaInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        fechaInput.value = today;
+    }
+});
+</script>
+{% endblock %}

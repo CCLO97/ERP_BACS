@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Cliente - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Editar Cliente</h1>
+    <p class="page-subtitle">Modificar información del cliente {{ cliente.nombre }}</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Información del Cliente</h2>
+    </div>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="nombre" class="form-label">Nombre de la Empresa *</label>
+            <input type="text" id="nombre" name="nombre" class="form-control" value="{{ cliente.nombre }}" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="tipo_documento" class="form-label">Tipo de Documento *</label>
+            <select id="tipo_documento" name="tipo_documento" class="form-control" required>
+                <option value="">Seleccionar...</option>
+                <option value="NIT" {% if cliente.tipo_documento == 'NIT' %}selected{% endif %}>NIT</option>
+                <option value="CC" {% if cliente.tipo_documento == 'CC' %}selected{% endif %}>Cédula de Ciudadanía</option>
+                <option value="CE" {% if cliente.tipo_documento == 'CE' %}selected{% endif %}>Cédula de Extranjería</option>
+                <option value="TI" {% if cliente.tipo_documento == 'TI' %}selected{% endif %}>Tarjeta de Identidad</option>
+                <option value="RC" {% if cliente.tipo_documento == 'RC' %}selected{% endif %}>Registro Civil</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="numero_documento" class="form-label">Número de Documento *</label>
+            <input type="text" id="numero_documento" name="numero_documento" class="form-control" value="{{ cliente.numero_documento }}" required maxlength="20">
+        </div>
+        
+        <div class="form-group">
+            <label for="correo" class="form-label">Correo Electrónico *</label>
+            <input type="email" id="correo" name="correo" class="form-control" value="{{ cliente.correo }}" required maxlength="120">
+        </div>
+        
+        <div class="form-group">
+            <label for="telefono" class="form-label">Teléfono *</label>
+            <input type="tel" id="telefono" name="telefono" class="form-control" value="{{ cliente.telefono }}" required maxlength="20">
+        </div>
+        
+        <div class="form-group">
+            <label for="direccion" class="form-label">Dirección</label>
+            <textarea id="direccion" name="direccion" class="form-control" rows="3">{{ cliente.direccion or '' }}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="contacto_principal" class="form-label">Contacto Principal</label>
+            <input type="text" id="contacto_principal" name="contacto_principal" class="form-control" value="{{ cliente.contacto_principal or '' }}" maxlength="100">
+        </div>
+        
+        <div class="form-group">
+            <label for="cargo_contacto" class="form-label">Cargo del Contacto</label>
+            <input type="text" id="cargo_contacto" name="cargo_contacto" class="form-control" value="{{ cliente.cargo_contacto or '' }}" maxlength="100">
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Actualizar Cliente</button>
+            <a href="{{ url_for('clientes') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Información adicional -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Información Adicional</h2>
+    </div>
+    <div class="d-flex justify-content-between">
+        <div>
+            <p><strong>Fecha de creación:</strong> {{ cliente.fecha_creacion.strftime('%d/%m/%Y') }}</p>
+            <p><strong>Estado:</strong> 
+                <span class="status-badge status-{{ 'abierta' if cliente.activo else 'cerrada' }}">
+                    {{ 'Activo' if cliente.activo else 'Inactivo' }}
+                </span>
+            </p>
+        </div>
+        <div>
+            <p><strong>Número de sedes:</strong> {{ cliente.sedes|length }}</p>
+            <p><strong>Incidencias asociadas:</strong> {{ cliente.incidencias|length }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Índice{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Nuevo Índice</h1>
+        <a href="{{ url_for('indices') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Índices
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Crear Nuevo Índice</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Prefijo del Índice *</label>
+                            <input type="text" name="prefijo" class="form-control" 
+                                   placeholder="Ej: INC, SOP, MANT" 
+                                   maxlength="10" 
+                                   required
+                                   oninput="this.value = this.value.toUpperCase()">
+                            <small class="form-text text-muted">
+                                El prefijo se convertirá automáticamente a mayúsculas. 
+                                Máximo 10 caracteres.
+                            </small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label">Número Inicial</label>
+                            <input type="number" name="numero_inicial" class="form-control" 
+                                   value="0" min="0" max="999999">
+                            <small class="form-text text-muted">
+                                Número desde el cual comenzará la secuencia. 
+                                Si es 0, el primer índice será 000001.
+                            </small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label">Vista Previa del Índice</label>
+                            <div class="alert alert-light">
+                                <code id="preview">PREFIJO_000001</code>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Crear Índice
+                            </button>
+                            <a href="{{ url_for('indices') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Información</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Formato del Índice</h5>
+                    <p>Los índices siguen el formato:</p>
+                    <code>PREFIJO_000001</code>
+                    
+                    <hr>
+                    
+                    <h5>Ejemplos de Prefijos</h5>
+                    <ul class="list-unstyled">
+                        <li><code>INC</code> - Incidencias generales</li>
+                        <li><code>SOP</code> - Soporte técnico</li>
+                        <li><code>MANT</code> - Mantenimiento</li>
+                        <li><code>BUG</code> - Reportes de errores</li>
+                        <li><code>REQ</code> - Requerimientos</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h5>Consejos</h5>
+                    <ul class="list-unstyled">
+                        <li>• Usa prefijos cortos y descriptivos</li>
+                        <li>• Evita caracteres especiales</li>
+                        <li>• Cada prefijo debe ser único</li>
+                        <li>• Los números se incrementan automáticamente</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Actualizar vista previa en tiempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const prefijoInput = document.querySelector('input[name="prefijo"]');
+    const numeroInput = document.querySelector('input[name="numero_inicial"]');
+    const preview = document.getElementById('preview');
+    
+    function updatePreview() {
+        const prefijo = prefijoInput.value.toUpperCase() || 'PREFIJO';
+        const numero = parseInt(numeroInput.value) || 0;
+        const proximoNumero = numero + 1;
+        preview.textContent = `${prefijo}_${proximoNumero.toString().padStart(6, '0')}`;
+    }
+    
+    prefijoInput.addEventListener('input', updatePreview);
+    numeroInput.addEventListener('input', updatePreview);
+    
+    // Actualizar vista previa inicial
+    updatePreview();
+});
+</script>
+{% endblock %}

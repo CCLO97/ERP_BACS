@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Sistemas - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Gestión de Sistemas</h1>
+    <p class="page-subtitle">Administra los sistemas disponibles para categorizar incidencias</p>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a href="{{ url_for('nuevo_sistema') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Sistema
+        </a>
+    </div>
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Sistemas Registrados</h2>
+    </div>
+    
+    {% if sistemas %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Incidencias</th>
+                    <th>Fecha Creación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sistema in sistemas %}
+                <tr>
+                    <td>{{ sistema.id }}</td>
+                    <td>
+                        <strong>{{ sistema.nombre }}</strong>
+                    </td>
+                    <td>
+                        {% if sistema.descripcion %}
+                            {{ sistema.descripcion[:100] }}{% if sistema.descripcion|length > 100 %}...{% endif %}
+                        {% else %}
+                            <span class="text-muted">Sin descripción</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-info">{{ sistema.incidencias|length }}</span>
+                    </td>
+                    <td>{{ sistema.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('editar_sistema', id=sistema.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    onclick="eliminarSistema({{ sistema.id }}, '{{ sistema.nombre }}')">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center" style="padding: 3rem;">
+        <div class="mb-3">
+            <i class="fas fa-cogs" style="font-size: 4rem; color: #ccc;"></i>
+        </div>
+        <h3 style="color: #666;">No hay sistemas registrados</h3>
+        <p style="color: #999;">Comienza creando tu primer sistema para categorizar las incidencias.</p>
+        <a href="{{ url_for('nuevo_sistema') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Crear Primer Sistema
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Información sobre sistemas -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h2 class="card-title">Información sobre Sistemas</h2>
+    </div>
+    <div class="card-body">
+        <p>Los sistemas permiten categorizar las incidencias por tipo de tecnología o servicio:</p>
+        <ul>
+            <li><strong>CCTV:</strong> Sistemas de videovigilancia y cámaras</li>
+            <li><strong>Control de Acceso:</strong> Sistemas de acceso y tarjetas</li>
+            <li><strong>Alarmas:</strong> Sistemas de detección y alertas</li>
+            <li><strong>Redes:</strong> Infraestructura de red y comunicaciones</li>
+            <li><strong>Automatización:</strong> Sistemas de control automatizado</li>
+            <li><strong>Otros:</strong> Sistemas especializados o personalizados</li>
+        </ul>
+        <p><strong>Nota:</strong> Los sistemas se utilizan para organizar los informes estructurados y facilitar la búsqueda de incidencias.</p>
+    </div>
+</div>
+
+<script>
+function eliminarSistema(id, nombre) {
+    if (confirm(`¿Estás seguro de que deseas eliminar el sistema "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        fetch(`/sistemas/${id}/eliminar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al eliminar el sistema');
+        });
+    }
+}
+</script>
+{% endblock %}

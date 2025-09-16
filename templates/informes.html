@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Informes - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Generar Informes</h1>
+    <p class="page-subtitle">Descarga informes de incidencias en formato CSV o PDF</p>
+</div>
+
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Seleccionar Incidencias</h2>
+    </div>
+    
+    <form method="POST" action="{{ url_for('descargar_informe') }}" enctype="multipart/form-data">
+        <div class="form-group">
+            <label class="form-label">Formato de Descarga *</label>
+            <div class="d-flex gap-2">
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="radio" name="formato" value="csv" required>
+                    <span>CSV (Solo datos textuales)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="radio" name="formato" value="pdf" required checked>
+                    <span>PDF con Imágenes</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="form-group" id="datos-informe" style="display: none;">
+            <h3 style="color: var(--dark-green); margin-bottom: 1rem;">Datos del Informe</h3>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Cliente *</label>
+                    <input type="text" name="cliente" class="form-control" placeholder="Nombre del cliente" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Persona de Contacto *</label>
+                    <input type="text" name="atencion" class="form-control" placeholder="Nombre de la persona de contacto" required>
+                </div>
+            </div>
+            
+            <div class="row mt-2">
+                <div class="col-md-6">
+                    <label class="form-label">Cargo *</label>
+                    <input type="text" name="cargo" class="form-control" placeholder="Cargo de la persona de contacto" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Alcance del Proyecto *</label>
+                    <input type="text" name="alcance" class="form-control" placeholder="Alcance del proyecto" required>
+                </div>
+            </div>
+            
+            <div class="mt-2">
+                <label class="form-label">Introducción *</label>
+                <textarea name="introduccion" class="form-control" rows="3" placeholder="Introducción del informe" required></textarea>
+            </div>
+            
+            <div class="mt-2">
+                <label class="form-label">Conclusiones *</label>
+                <textarea name="conclusiones" class="form-control" rows="3" placeholder="Conclusiones del informe" required></textarea>
+            </div>
+        </div>
+        
+        <div class="form-group" id="filtros-informes" style="display: none;">
+            <h3 style="color: var(--dark-green); margin-bottom: 1rem;">Filtros de Incidencias</h3>
+            
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Cliente</label>
+                    <select name="filtro_cliente" class="form-control" onchange="aplicarFiltros()">
+                        <option value="">Todos los clientes</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sede</label>
+                    <select name="filtro_sede" class="form-control" onchange="aplicarFiltros()">
+                        <option value="">Todas las sedes</option>
+                        {% for sede in sedes %}
+                        <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sistema</label>
+                    <select name="filtro_sistema" class="form-control" onchange="aplicarFiltros()">
+                        <option value="">Todos los sistemas</option>
+                        {% for sistema in sistemas %}
+                        <option value="{{ sistema.id }}">{{ sistema.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Técnico</label>
+                    <select name="filtro_tecnico" class="form-control" onchange="aplicarFiltros()">
+                        <option value="">Todos los técnicos</option>
+                        {% for tecnico in tecnicos %}
+                        <option value="{{ tecnico.id }}">{{ tecnico.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row mt-2">
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select name="filtro_estado" class="form-control" onchange="aplicarFiltros()">
+                        <option value="">Todos los estados</option>
+                        <option value="Abierta">Abierta</option>
+                        <option value="En proceso">En proceso</option>
+                        <option value="Cerrada">Cerrada</option>
+                        <option value="Cancelada">Cancelada</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fecha Desde</label>
+                    <input type="date" name="filtro_fecha_desde" class="form-control" onchange="aplicarFiltros()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fecha Hasta</label>
+                    <input type="date" name="filtro_fecha_hasta" class="form-control" onchange="aplicarFiltros()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Con Imágenes</label>
+                    <select name="filtro_con_imagenes" class="form-control" onchange="aplicarFiltros()">
+                        <option value="">Todas</option>
+                        <option value="si">Solo con imágenes</option>
+                        <option value="no">Solo sin imágenes</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltros()">
+                    <i class="fas fa-times"></i> Limpiar Filtros
+                </button>
+                <span id="contador-filtros" style="margin-left: 1rem; color: #666; font-size: 0.9rem;"></span>
+            </div>
+        </div>
+        
+        {% if incidencias %}
+        <div class="form-group">
+            <label class="form-label">Incidencias a Incluir *</label>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; padding: 1rem;">
+                <div class="d-flex justify-content-between align-items-center mb-1" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                        <input type="checkbox" id="select-all" onchange="toggleAll()">
+                        <span>Seleccionar Todas</span>
+                    </label>
+                </div>
+                
+                {% for incidencia in incidencias %}
+                <div class="d-flex justify-content-between align-items-center mb-1" style="padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;"
+                     data-cliente-id="{{ incidencia.cliente_id }}"
+                     data-sede-id="{{ incidencia.sede_id }}"
+                     data-sistema-id="{{ incidencia.sistema_id }}"
+                     data-tecnico-id="{{ incidencia.tecnico_asignado or '' }}"
+                     data-estado="{{ incidencia.estado }}"
+                     data-fecha="{{ incidencia.fecha_inicio.strftime('%Y-%m-%d') }}"
+                     data-tiene-imagenes="{{ 'si' if incidencia.adjuntos else 'no' }}">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                        <input type="checkbox" name="incidencias" value="{{ incidencia.id }}" class="incidencia-checkbox">
+                        <span>{{ incidencia.indice }} - {{ incidencia.titulo }}</span>
+                    </label>
+                    <div style="display: flex; gap: 1rem; font-size: 0.875rem; color: #666;">
+                        <span>{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'Sin cliente' }}</span>
+                        <span class="status-badge status-{{ incidencia.estado.lower().replace(' ', '-') }}">
+                            {{ incidencia.estado }}
+                        </span>
+                        <span>{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <small style="color: #666;">Seleccione al menos una incidencia para generar el informe</small>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Generar Informe</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+        
+        {% else %}
+        <div class="text-center" style="padding: 2rem;">
+            <p style="color: #666; font-size: 1.1rem;">No hay incidencias disponibles para generar informes</p>
+            <a href="{{ url_for('nueva_incidencia') }}" class="btn btn-primary mt-1">Crear Primera Incidencia</a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Información sobre formatos -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Información sobre Formatos</h2>
+    </div>
+    <div class="d-flex gap-2">
+        <div class="card" style="flex: 1;">
+            <div class="card-header">
+                <h3 style="color: var(--dark-green); font-size: 1.1rem;">Formato CSV</h3>
+            </div>
+            <ul style="color: #666; padding-left: 1.5rem;">
+                <li>Datos textuales únicamente</li>
+                <li>Fechas y estados</li>
+                <li>Información de técnicos y creadores</li>
+                <li>Ideal para análisis de datos</li>
+                <li>Compatible con Excel</li>
+            </ul>
+        </div>
+        <div class="card" style="flex: 1;">
+            <div class="card-header">
+                <h3 style="color: var(--dark-green); font-size: 1.1rem;">PDF con Imágenes</h3>
+            </div>
+            <ul style="color: #666; padding-left: 1.5rem;">
+                <li>Formato estructurado profesional</li>
+                <li>Imágenes numeradas secuencialmente</li>
+                <li>Leyendas descriptivas personalizables</li>
+                <li>Secciones: Introducción, Actividades, Conclusiones</li>
+                <li>Imágenes centradas con tamaños optimizados</li>
+                <li>Soporte para collages de imágenes</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.incidencia-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+// Actualizar el estado del checkbox "Seleccionar Todas"
+document.querySelectorAll('.incidencia-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const allCheckboxes = document.querySelectorAll('.incidencia-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.incidencia-checkbox:checked');
+        const selectAll = document.getElementById('select-all');
+        
+        selectAll.checked = allCheckboxes.length === checkedCheckboxes.length;
+    });
+});
+
+// Mostrar/ocultar formulario de datos del informe y filtros
+document.querySelectorAll('input[name="formato"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const datosInforme = document.getElementById('datos-informe');
+        const filtrosInformes = document.getElementById('filtros-informes');
+        
+        // Obtener todos los campos requeridos del formulario de datos
+        const camposRequeridos = datosInforme.querySelectorAll('input[required], textarea[required]');
+        
+        if (this.value === 'pdf') {
+            datosInforme.style.display = 'block';
+            filtrosInformes.style.display = 'block';
+            // Hacer campos requeridos para PDF
+            camposRequeridos.forEach(campo => {
+                campo.setAttribute('required', 'required');
+            });
+        } else {
+            datosInforme.style.display = 'none';
+            filtrosInformes.style.display = 'none';
+            // Quitar requerido para CSV
+            camposRequeridos.forEach(campo => {
+                campo.removeAttribute('required');
+            });
+        }
+    });
+});
+
+// Mostrar formulario de datos si PDF está seleccionado por defecto
+document.addEventListener('DOMContentLoaded', function() {
+    const pdfRadio = document.querySelector('input[name="formato"][value="pdf"]');
+    const datosInforme = document.getElementById('datos-informe');
+    const filtrosInformes = document.getElementById('filtros-informes');
+    const camposRequeridos = datosInforme.querySelectorAll('input[required], textarea[required]');
+    
+    if (pdfRadio && pdfRadio.checked) {
+        datosInforme.style.display = 'block';
+        filtrosInformes.style.display = 'block';
+        // Asegurar que los campos sean requeridos para PDF
+        camposRequeridos.forEach(campo => {
+            campo.setAttribute('required', 'required');
+        });
+    } else {
+        // Si CSV está seleccionado por defecto, quitar required
+        camposRequeridos.forEach(campo => {
+            campo.removeAttribute('required');
+        });
+    }
+});
+
+// Funciones de filtrado
+function aplicarFiltros() {
+    const filtros = {
+        cliente: document.querySelector('select[name="filtro_cliente"]').value,
+        sede: document.querySelector('select[name="filtro_sede"]').value,
+        sistema: document.querySelector('select[name="filtro_sistema"]').value,
+        tecnico: document.querySelector('select[name="filtro_tecnico"]').value,
+        estado: document.querySelector('select[name="filtro_estado"]').value,
+        fecha_desde: document.querySelector('input[name="filtro_fecha_desde"]').value,
+        fecha_hasta: document.querySelector('input[name="filtro_fecha_hasta"]').value,
+        con_imagenes: document.querySelector('select[name="filtro_con_imagenes"]').value
+    };
+    
+    const incidencias = document.querySelectorAll('.incidencia-checkbox');
+    let visibleCount = 0;
+    
+    incidencias.forEach(checkbox => {
+        const row = checkbox.closest('div');
+        const incidenciaId = checkbox.value;
+        
+        // Obtener datos de la incidencia desde los atributos data
+        const clienteId = row.getAttribute('data-cliente-id') || '';
+        const sedeId = row.getAttribute('data-sede-id') || '';
+        const sistemaId = row.getAttribute('data-sistema-id') || '';
+        const tecnicoId = row.getAttribute('data-tecnico-id') || '';
+        const estado = row.getAttribute('data-estado') || '';
+        const fecha = row.getAttribute('data-fecha') || '';
+        const tieneImagenes = row.getAttribute('data-tiene-imagenes') || '';
+        
+        let mostrar = true;
+        
+        // Aplicar filtros
+        if (filtros.cliente && clienteId !== filtros.cliente) mostrar = false;
+        if (filtros.sede && sedeId !== filtros.sede) mostrar = false;
+        if (filtros.sistema && sistemaId !== filtros.sistema) mostrar = false;
+        if (filtros.tecnico && tecnicoId !== filtros.tecnico) mostrar = false;
+        if (filtros.estado && estado !== filtros.estado) mostrar = false;
+        if (filtros.con_imagenes && tieneImagenes !== filtros.con_imagenes) mostrar = false;
+        
+        // Filtro de fechas
+        if (filtros.fecha_desde && fecha < filtros.fecha_desde) mostrar = false;
+        if (filtros.fecha_hasta && fecha > filtros.fecha_hasta) mostrar = false;
+        
+        if (mostrar) {
+            row.style.display = 'flex';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+            checkbox.checked = false; // Desmarcar si está oculta
+        }
+    });
+    
+    // Actualizar contador
+    document.getElementById('contador-filtros').textContent = `${visibleCount} incidencias visibles`;
+    
+    // Actualizar checkbox "Seleccionar Todas"
+    const selectAll = document.getElementById('select-all');
+    const visibleCheckboxes = document.querySelectorAll('.incidencia-checkbox:not([style*="display: none"])');
+    const checkedVisible = document.querySelectorAll('.incidencia-checkbox:not([style*="display: none"]):checked');
+    selectAll.checked = visibleCheckboxes.length === checkedVisible.length && visibleCheckboxes.length > 0;
+}
+
+function limpiarFiltros() {
+    // Limpiar todos los filtros
+    document.querySelectorAll('select[name^="filtro_"], input[name^="filtro_"]').forEach(input => {
+        input.value = '';
+    });
+    
+    // Mostrar todas las incidencias
+    document.querySelectorAll('.incidencia-checkbox').forEach(checkbox => {
+        checkbox.closest('div').style.display = 'flex';
+    });
+    
+    // Actualizar contador
+    const totalIncidencias = document.querySelectorAll('.incidencia-checkbox').length;
+    document.getElementById('contador-filtros').textContent = `${totalIncidencias} incidencias visibles`;
+    
+    // Actualizar checkbox "Seleccionar Todas"
+    const selectAll = document.getElementById('select-all');
+    const checkedBoxes = document.querySelectorAll('.incidencia-checkbox:checked');
+    selectAll.checked = checkedBoxes.length === totalIncidencias && totalIncidencias > 0;
+}
+</script>
+{% endblock %}

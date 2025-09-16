@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Rol{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Editar Rol</h1>
+        <a href="{{ url_for('roles') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Roles
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Editar Rol: {{ rol.nombre }}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Nombre del Rol *</label>
+                            <input type="text" name="nombre" class="form-control" 
+                                   value="{{ rol.nombre }}"
+                                   maxlength="50" 
+                                   required>
+                            <small class="form-text text-muted">
+                                Nombre único para identificar el rol. Máximo 50 caracteres.
+                            </small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label">Descripción *</label>
+                            <textarea name="descripcion" class="form-control" 
+                                      rows="4" 
+                                      required>{{ rol.descripcion }}</textarea>
+                            <small class="form-text text-muted">
+                                Descripción detallada de los permisos y responsabilidades.
+                            </small>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Advertencia:</strong> Cambiar el nombre o descripción de un rol puede afectar a los usuarios que lo tienen asignado.
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                            <a href="{{ url_for('roles') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Información del Rol</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>ID:</strong></td>
+                            <td>{{ rol.id }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nombre:</strong></td>
+                            <td><code>{{ rol.nombre }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Descripción:</strong></td>
+                            <td>{{ rol.descripcion }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Usuarios:</strong></td>
+                            <td>
+                                <span class="badge bg-info">{{ rol.usuarios_count }} usuario{{ 's' if rol.usuarios_count != 1 else '' }}</span>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <hr>
+                    
+                    <h5>Usuarios con este Rol</h5>
+                    {% if rol.usuarios %}
+                        <div class="list-group">
+                            {% for usuario in rol.usuarios %}
+                                <div class="list-group-item py-2">
+                                    <strong>{{ usuario.nombre }}</strong><br>
+                                    <small class="text-muted">{{ usuario.correo }}</small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay usuarios asignados a este rol.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

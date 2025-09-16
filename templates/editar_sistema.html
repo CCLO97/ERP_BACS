@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Sistema - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Editar Sistema</h1>
+    <p class="page-subtitle">Modificar información del sistema: {{ sistema.nombre }}</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Información del Sistema</h2>
+    </div>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label class="form-label">Nombre del Sistema *</label>
+            <input type="text" name="nombre" class="form-control" required 
+                   value="{{ sistema.nombre }}" placeholder="Ej: CCTV, Control de Acceso, Alarmas...">
+            <small style="color: #666;">Nombre único que identifica el sistema</small>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="4" 
+                      placeholder="Descripción detallada del sistema y sus características...">{{ sistema.descripcion or '' }}</textarea>
+            <small style="color: #666;">Descripción opcional del sistema (máximo 500 caracteres)</small>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Actualizar Sistema
+            </button>
+            <a href="{{ url_for('sistemas') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Información del sistema -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h2 class="card-title">Información Adicional</h2>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>ID del Sistema:</strong> {{ sistema.id }}</p>
+                <p><strong>Fecha de Creación:</strong> {{ sistema.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p><strong>Estado:</strong> 
+                    {% if sistema.activo %}
+                        <span class="badge badge-success">Activo</span>
+                    {% else %}
+                        <span class="badge badge-danger">Inactivo</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Incidencias Asociadas:</strong> 
+                    <span class="badge badge-info">{{ sistema.incidencias|length }}</span>
+                </p>
+                {% if sistema.incidencias %}
+                <p><strong>Última Actividad:</strong> 
+                    {% set ultima_incidencia = sistema.incidencias|sort(attribute='fecha_inicio')|last %}
+                    {{ ultima_incidencia.fecha_inicio.strftime('%d/%m/%Y') }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Incidencias asociadas -->
+{% if sistema.incidencias %}
+<div class="card mt-3">
+    <div class="card-header">
+        <h2 class="card-title">Incidencias Asociadas ({{ sistema.incidencias|length }})</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Índice</th>
+                        <th>Título</th>
+                        <th>Cliente</th>
+                        <th>Sede</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for incidencia in sistema.incidencias[:10] %}
+                    <tr>
+                        <td>{{ incidencia.indice }}</td>
+                        <td>{{ incidencia.titulo[:50] }}{% if incidencia.titulo|length > 50 %}...{% endif %}</td>
+                        <td>{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</td>
+                        <td>{{ incidencia.sede_obj.nombre if incidencia.sede_obj else 'N/A' }}</td>
+                        <td>
+                            <span class="status-badge status-{{ incidencia.estado.lower().replace(' ', '-') }}">
+                                {{ incidencia.estado }}
+                            </span>
+                        </td>
+                        <td>{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if sistema.incidencias|length > 10 %}
+        <p class="text-muted text-center mt-2">
+            Mostrando las primeras 10 incidencias de {{ sistema.incidencias|length }} totales
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const nombre = document.querySelector('input[name="nombre"]').value.trim();
+    const descripcion = document.querySelector('textarea[name="descripcion"]').value.trim();
+    
+    if (!nombre) {
+        e.preventDefault();
+        alert('El nombre del sistema es obligatorio');
+        return;
+    }
+    
+    if (descripcion.length > 500) {
+        e.preventDefault();
+        alert('La descripción no puede exceder los 500 caracteres');
+        return;
+    }
+});
+
+// Contador de caracteres para la descripción
+document.querySelector('textarea[name="descripcion"]').addEventListener('input', function() {
+    const maxLength = 500;
+    const currentLength = this.value.length;
+    const remaining = maxLength - currentLength;
+    
+    // Crear o actualizar contador
+    let counter = document.getElementById('char-counter');
+    if (!counter) {
+        counter = document.createElement('small');
+        counter.id = 'char-counter';
+        counter.style.color = '#666';
+        this.parentNode.appendChild(counter);
+    }
+    
+    counter.textContent = `${currentLength}/${maxLength} caracteres`;
+    
+    if (remaining < 0) {
+        counter.style.color = 'red';
+    } else if (remaining < 50) {
+        counter.style.color = 'orange';
+    } else {
+        counter.style.color = '#666';
+    }
+});
+</script>
+{% endblock %}

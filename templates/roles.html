@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Roles{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestión de Roles</h1>
+        <a href="{{ url_for('nuevo_rol') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Rol
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Roles del Sistema</h2>
+        </div>
+        <div class="card-body">
+            {% if roles %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Usuarios</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rol in roles %}
+                            <tr>
+                                <td>{{ rol.id }}</td>
+                                <td><strong>{{ rol.nombre }}</strong></td>
+                                <td>{{ rol.descripcion }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ rol.usuarios_count }} usuario{{ 's' if rol.usuarios_count != 1 else '' }}</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('editar_rol', id=rol.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        <a href="{{ url_for('eliminar_rol', id=rol.id) }}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('¿Está seguro de eliminar este rol?')">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-user-tag fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No hay roles configurados</h4>
+                    <p class="text-muted">Crea tu primer rol para organizar los permisos del sistema</p>
+                    <a href="{{ url_for('nuevo_rol') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primer Rol
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title">Información sobre Roles</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>¿Qué son los roles?</h5>
+                    <p>Los roles definen los permisos y accesos que tiene cada usuario en el sistema. Permiten organizar y controlar qué puede hacer cada persona.</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Roles Recomendados</h5>
+                    <ul>
+                        <li><strong>Administrador:</strong> Acceso completo al sistema</li>
+                        <li><strong>Coordinador:</strong> Gestión de incidencias y asignaciones</li>
+                        <li><strong>Técnico:</strong> Trabajo con incidencias asignadas</li>
+                        <li><strong>Usuario:</strong> Acceso básico y consultas</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+                <h6><i class="fas fa-info-circle"></i> Consejos para crear roles:</h6>
+                <ul class="mb-0">
+                    <li>Usa nombres descriptivos y claros</li>
+                    <li>Define permisos específicos en la descripción</li>
+                    <li>No elimines roles que estén en uso</li>
+                    <li>Considera la jerarquía de permisos</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

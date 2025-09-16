@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Incidencia - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Editar Incidencia</h1>
+    <p class="page-subtitle">Modificar información de la incidencia {{ incidencia.indice }}</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Información de la Incidencia</h2>
+    </div>
+    
+    <form method="POST">
+        <input type="hidden" name="estado_anterior" value="{{ incidencia.estado }}">
+        
+        <div class="form-group">
+            <label for="titulo" class="form-label">Título *</label>
+            <input type="text" id="titulo" name="titulo" class="form-control" value="{{ incidencia.titulo }}" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="descripcion" class="form-label">Descripción *</label>
+            <textarea id="descripcion" name="descripcion" class="form-control" required rows="5">{{ incidencia.descripcion }}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="cliente_id" class="form-label">Cliente *</label>
+            <select id="cliente_id" name="cliente_id" class="form-control" required onchange="cargarSedes()">
+                <option value="">Seleccionar cliente...</option>
+                {% for cliente in clientes %}
+                <option value="{{ cliente.id }}" {% if incidencia.cliente_id == cliente.id %}selected{% endif %}>{{ cliente.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="sede_id" class="form-label">Sede *</label>
+            <select id="sede_id" name="sede_id" class="form-control" required>
+                <option value="">Seleccionar sede...</option>
+                {% for sede in sedes %}
+                <option value="{{ sede.id }}" {% if incidencia.sede_id == sede.id %}selected{% endif %}>{{ sede.nombre }} ({{ sede.cliente.nombre }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="sistema_id" class="form-label">Sistema *</label>
+            <select id="sistema_id" name="sistema_id" class="form-control" required>
+                <option value="">Seleccionar sistema...</option>
+                {% for sistema in sistemas %}
+                <option value="{{ sistema.id }}" {% if incidencia.sistema_id == sistema.id %}selected{% endif %}>{{ sistema.nombre }}</option>
+                {% endfor %}
+            </select>
+            <small style="color: #666;">Sistema al que pertenece esta incidencia</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="estado" class="form-label">Estado *</label>
+            <select id="estado" name="estado" class="form-control" required>
+                <option value="Abierta" {% if incidencia.estado == 'Abierta' %}selected{% endif %}>Abierta</option>
+                <option value="En proceso" {% if incidencia.estado == 'En proceso' %}selected{% endif %}>En proceso</option>
+                <option value="Cotización" {% if incidencia.estado == 'Cotización' %}selected{% endif %}>Cotización</option>
+                <option value="Levantamiento" {% if incidencia.estado == 'Levantamiento' %}selected{% endif %}>Levantamiento</option>
+                <option value="Garantía/Soporte" {% if incidencia.estado == 'Garantía/Soporte' %}selected{% endif %}>Garantía/Soporte</option>
+                <option value="Cerrada" {% if incidencia.estado == 'Cerrada' %}selected{% endif %}>Cerrada</option>
+            </select>
+        </div>
+        
+        {% if current_user.rol.nombre in ['Administrador', 'Coordinador'] %}
+        <div class="form-group">
+            <label for="tecnico_asignado" class="form-label">Técnico Asignado</label>
+            <select id="tecnico_asignado" name="tecnico_asignado" class="form-control">
+                <option value="">Sin asignar</option>
+                {% for tecnico in tecnicos %}
+                <option value="{{ tecnico.id }}" {% if incidencia.tecnico_asignado == tecnico.id %}selected{% endif %}>
+                    {{ tecnico.nombre }} ({{ tecnico.correo }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="adjuntos" class="form-label">Archivos Adjuntos</label>
+            <input type="file" id="adjuntos" name="adjuntos" class="form-control" multiple accept="image/*,.pdf,.doc,.docx" onchange="mostrarTitulosImagenes()">
+            <small style="color: #666;">Seleccione nuevos archivos para reemplazar los existentes. Formatos permitidos: imágenes, PDF, Word</small>
+        </div>
+        
+        <div id="titulos-imagenes" style="display: none;">
+            <h4>Títulos de las Imágenes</h4>
+            <p style="color: #666; font-size: 0.9rem;">Asigne un título descriptivo a cada imagen que se mostrará en los informes:</p>
+            <div id="campos-titulos"></div>
+        </div>
+        
+        {% if incidencia.adjuntos %}
+        <div class="form-group">
+            <label class="form-label">Archivos Actuales</label>
+            <div class="alert alert-info">
+                <strong>Archivos adjuntos actuales:</strong>
+                {% for archivo in incidencia.adjuntos.split(',') %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>{{ archivo.strip() }}</span>
+                    <small class="text-muted">Archivo adjunto</small>
+                </div>
+                {% endfor %}
+                <small class="text-muted mt-2 d-block">Los nuevos archivos reemplazarán los existentes</small>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Actualizar Incidencia</button>
+            <a href="{{ url_for('incidencias') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Información adicional -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Información Adicional</h2>
+    </div>
+    <div class="d-flex justify-content-between">
+        <div>
+            <p><strong>Índice:</strong> {{ incidencia.indice }}</p>
+            <p><strong>Creado por:</strong> {{ incidencia.creador.nombre }}</p>
+            <p><strong>Fecha de creación:</strong> {{ incidencia.fecha_inicio.strftime('%d/%m/%Y %H:%M') }}</p>
+            <p><strong>Cliente:</strong> {{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</p>
+        </div>
+        <div>
+            <p><strong>Técnico asignado:</strong> {{ incidencia.tecnico.nombre if incidencia.tecnico else 'Sin asignar' }}</p>
+            <p><strong>Último cambio:</strong> {{ incidencia.fecha_cambio_estado.strftime('%d/%m/%Y %H:%M') }}</p>
+            <p><strong>Sede:</strong> {{ incidencia.sede_obj.nombre if incidencia.sede_obj else 'N/A' }}</p>
+            {% if incidencia.adjuntos %}
+            <p><strong>Adjuntos:</strong> {{ incidencia.adjuntos }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function mostrarTitulosImagenes() {
+    const archivos = document.getElementById('adjuntos').files;
+    const titulosDiv = document.getElementById('titulos-imagenes');
+    const camposTitulos = document.getElementById('campos-titulos');
+    
+    if (archivos.length === 0) {
+        titulosDiv.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar sección de títulos
+    titulosDiv.style.display = 'block';
+    camposTitulos.innerHTML = '';
+    
+    Array.from(archivos).forEach((archivo, index) => {
+        // Solo mostrar campos para imágenes
+        if (archivo.type.startsWith('image/')) {
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.style.marginBottom = '1rem';
+            
+            div.innerHTML = `
+                <label class="form-label">Título para: ${archivo.name}</label>
+                <input type="text" name="titulos_imagenes" class="form-control" 
+                       placeholder="Ej: Instalación de cámara en entrada principal" 
+                       value="${archivo.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ')}">
+            `;
+            
+            camposTitulos.appendChild(div);
+        }
+    });
+}
+</script>
+{% endblock %}

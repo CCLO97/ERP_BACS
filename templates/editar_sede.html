@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Sede - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Editar Sede</h1>
+    <p class="page-subtitle">Modificar información de la sede {{ sede.nombre }}</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Información de la Sede</h2>
+    </div>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="nombre" class="form-label">Nombre de la Sede *</label>
+            <input type="text" id="nombre" name="nombre" class="form-control" value="{{ sede.nombre }}" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="direccion" class="form-label">Dirección</label>
+            <textarea id="direccion" name="direccion" class="form-control" rows="3">{{ sede.direccion or '' }}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="telefono" class="form-label">Teléfono</label>
+            <input type="tel" id="telefono" name="telefono" class="form-control" value="{{ sede.telefono or '' }}" maxlength="20">
+        </div>
+        
+        <div class="form-group">
+            <label for="correo" class="form-label">Correo Electrónico</label>
+            <input type="email" id="correo" name="correo" class="form-control" value="{{ sede.correo or '' }}" maxlength="120">
+        </div>
+        
+        <div class="form-group">
+            <label for="contacto_responsable" class="form-label">Contacto Responsable</label>
+            <input type="text" id="contacto_responsable" name="contacto_responsable" class="form-control" value="{{ sede.contacto_responsable or '' }}" maxlength="100">
+        </div>
+        
+        <div class="form-group">
+            <label for="cargo_responsable" class="form-label">Cargo del Responsable</label>
+            <input type="text" id="cargo_responsable" name="cargo_responsable" class="form-control" value="{{ sede.cargo_responsable or '' }}" maxlength="100">
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Actualizar Sede</button>
+            <a href="{{ url_for('sedes_cliente', id=sede.cliente_id) }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Información adicional -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h2 class="card-title">Información Adicional</h2>
+    </div>
+    <div class="d-flex justify-content-between">
+        <div>
+            <p><strong>Cliente:</strong> {{ sede.cliente.nombre }}</p>
+            <p><strong>Fecha de creación:</strong> {{ sede.fecha_creacion.strftime('%d/%m/%Y') }}</p>
+            <p><strong>Estado:</strong> 
+                <span class="status-badge status-{{ 'abierta' if sede.activo else 'cerrada' }}">
+                    {{ 'Activo' if sede.activo else 'Inactivo' }}
+                </span>
+            </p>
+        </div>
+        <div>
+            <p><strong>Incidencias asociadas:</strong> {{ sede.incidencias|length }}</p>
+            <p><strong>Documento cliente:</strong> {{ sede.cliente.tipo_documento }} {{ sede.cliente.numero_documento }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

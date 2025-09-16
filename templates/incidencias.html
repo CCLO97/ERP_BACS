@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Incidencias - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Gestión de Incidencias</h1>
+    <p class="page-subtitle">Administra todas las incidencias del sistema</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="card-title">Lista de Incidencias</h2>
+            <a href="{{ url_for('nueva_incidencia') }}" class="btn btn-primary">Nueva Incidencia</a>
+        </div>
+    </div>
+    
+    {% if incidencias.items %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Índice</th>
+                    <th>Título</th>
+                    <th>Cliente</th>
+                    <th>Sede</th>
+                    <th>Estado</th>
+                    <th>Técnico</th>
+                    <th>Fecha Inicio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incidencia in incidencias.items %}
+                <tr>
+                    <td>{{ incidencia.indice }}</td>
+                    <td>{{ incidencia.titulo }}</td>
+                    <td>{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</td>
+                    <td>{{ incidencia.sede_obj.nombre if incidencia.sede_obj else 'N/A' }}</td>
+                    <td>
+                        <span class="status-badge status-{{ incidencia.estado.lower().replace(' ', '-') }}">
+                            {{ incidencia.estado }}
+                        </span>
+                    </td>
+                    <td>{{ incidencia.tecnico.nombre if incidencia.tecnico else 'Sin asignar' }}</td>
+                    <td>{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <a href="{{ url_for('editar_incidencia', id=incidencia.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginación -->
+    {% if incidencias.pages > 1 %}
+    <div class="pagination">
+        {% if incidencias.has_prev %}
+            <a href="{{ url_for('incidencias', page=incidencias.prev_num) }}">&laquo; Anterior</a>
+        {% endif %}
+        
+        {% for page_num in incidencias.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != incidencias.page %}
+                    <a href="{{ url_for('incidencias', page=page_num) }}">{{ page_num }}</a>
+                {% else %}
+                    <span class="current">{{ page_num }}</span>
+                {% endif %}
+            {% else %}
+                <span>...</span>
+            {% endif %}
+        {% endfor %}
+        
+        {% if incidencias.has_next %}
+            <a href="{{ url_for('incidencias', page=incidencias.next_num) }}">Siguiente &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="text-center" style="padding: 3rem;">
+        <p style="color: #666; font-size: 1.1rem;">No hay incidencias registradas</p>
+        <a href="{{ url_for('nueva_incidencia') }}" class="btn btn-primary mt-1">Crear Primera Incidencia</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

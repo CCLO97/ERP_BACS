@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Plantilla de Informe{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Nueva Plantilla de Informe</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nombre">Nombre de la Plantilla</label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="version">Versión</label>
+                                    <input type="text" class="form-control" id="version" name="version" value="1.0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="descripcion">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="encabezado_titulo">Título del Encabezado</label>
+                                    <input type="text" class="form-control" id="encabezado_titulo" name="encabezado_titulo" value="INFORME DE ACTIVIDADES">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="empresa_nombre">Nombre de la Empresa</label>
+                                    <input type="text" class="form-control" id="empresa_nombre" name="empresa_nombre" value="BUILDING AUTOMATION AND CONTROL SYSTEM">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="logo">Logo de la Empresa</label>
+                            <input type="file" class="form-control-file" id="logo" name="logo" accept="image/*">
+                            <small class="form-text text-muted">Formatos soportados: JPG, PNG, GIF. Tamaño recomendado: 200x100px</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="agrupacion_por">Agrupación por</label>
+                                    <select class="form-control" id="agrupacion_por" name="agrupacion_por">
+                                        <option value="cliente">Cliente</option>
+                                        <option value="sede">Sede</option>
+                                        <option value="estado">Estado</option>
+                                        <option value="tecnico">Técnico</option>
+                                        <option value="fecha">Fecha</option>
+                                        <option value="ninguna">Sin agrupación</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="formato_pagina">Formato de Página</label>
+                                    <select class="form-control" id="formato_pagina" name="formato_pagina">
+                                        <option value="A4">A4</option>
+                                        <option value="Letter">Letter</option>
+                                        <option value="Legal">Legal</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="margen_superior">Margen Superior (cm)</label>
+                                    <input type="number" class="form-control" id="margen_superior" name="margen_superior" value="2.0" step="0.1" min="0.5" max="5.0">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="margen_inferior">Margen Inferior (cm)</label>
+                                    <input type="number" class="form-control" id="margen_inferior" name="margen_inferior" value="2.0" step="0.1" min="0.5" max="5.0">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="margen_izquierdo">Margen Izquierdo (cm)</label>
+                                    <input type="number" class="form-control" id="margen_izquierdo" name="margen_izquierdo" value="2.0" step="0.1" min="0.5" max="5.0">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="margen_derecho">Margen Derecho (cm)</label>
+                                    <input type="number" class="form-control" id="margen_derecho" name="margen_derecho" value="2.0" step="0.1" min="0.5" max="5.0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5>Opciones de Contenido</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_imagenes" name="incluir_imagenes" checked>
+                                    <label class="form-check-label" for="incluir_imagenes">
+                                        Incluir imágenes adjuntas
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_descripcion_completa" name="incluir_descripcion_completa" checked>
+                                    <label class="form-check-label" for="incluir_descripcion_completa">
+                                        Incluir descripción completa
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_fechas" name="incluir_fechas" checked>
+                                    <label class="form-check-label" for="incluir_fechas">
+                                        Incluir fechas detalladas
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_tecnicos" name="incluir_tecnicos" checked>
+                                    <label class="form-check-label" for="incluir_tecnicos">
+                                        Incluir información de técnicos
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">Crear Plantilla</button>
+                            <a href="{{ url_for('plantillas_informes') }}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
