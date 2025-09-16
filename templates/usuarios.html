@@ -10,14 +10,14 @@
 
 <div class="card">
     <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center mobile-stack">
             <h2 class="card-title">Lista de Usuarios</h2>
-            <a href="{{ url_for('nuevo_usuario') }}" class="btn btn-primary">Nuevo Usuario</a>
+            <a href="{{ url_for('nuevo_usuario') }}" class="btn btn-primary mobile-full-width">Nuevo Usuario</a>
         </div>
     </div>
     
     {% if usuarios %}
-    <div class="table-container">
+    <div class="table-container table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -33,27 +33,29 @@
             <tbody>
                 {% for usuario in usuarios %}
                 <tr>
-                    <td>{{ usuario.nombre }}</td>
-                    <td>{{ usuario.tipo_documento }} {{ usuario.numero_documento }}</td>
-                    <td>{{ usuario.correo }}</td>
-                    <td>{{ usuario.telefono }}</td>
-                    <td>
+                    <td data-label="Nombre">{{ usuario.nombre }}</td>
+                    <td data-label="Documento">{{ usuario.tipo_documento }} {{ usuario.numero_documento }}</td>
+                    <td data-label="Correo">{{ usuario.correo }}</td>
+                    <td data-label="Teléfono">{{ usuario.telefono }}</td>
+                    <td data-label="Rol">
                         <span class="status-badge status-{{ usuario.rol.nombre.lower() }}">
                             {{ usuario.rol.nombre }}
                         </span>
                     </td>
-                    <td>{{ usuario.fecha_creacion.strftime('%d/%m/%Y') }}</td>
-                    <td>
-                        <a href="{{ url_for('editar_usuario', id=usuario.id) }}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-edit"></i> Editar
-                        </a>
-                        {% if usuario.id != current_user.id %}
-                        <a href="{{ url_for('eliminar_usuario', id=usuario.id) }}" 
-                           class="btn btn-sm btn-danger"
-                           onclick="return confirm('¿Está seguro de eliminar este usuario?')">
-                            <i class="fas fa-trash"></i> Eliminar
-                        </a>
-                        {% endif %}
+                    <td data-label="Fecha Creación">{{ usuario.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                    <td data-label="Acciones">
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('editar_usuario', id=usuario.id) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            {% if usuario.id != current_user.id %}
+                            <a href="{{ url_for('eliminar_usuario', id=usuario.id) }}" 
+                               class="btn btn-sm btn-danger"
+                               onclick="return confirm('¿Está seguro de eliminar este usuario?')">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

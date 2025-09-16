@@ -8,14 +8,14 @@
     <p class="page-subtitle">Administra los sistemas disponibles para categorizar incidencias</p>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 mobile-stack">
     <div>
-        <a href="{{ url_for('nuevo_sistema') }}" class="btn btn-primary">
+        <a href="{{ url_for('nuevo_sistema') }}" class="btn btn-primary mobile-full-width">
             <i class="fas fa-plus"></i> Nuevo Sistema
         </a>
     </div>
     <div>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mobile-full-width">
             <i class="fas fa-arrow-left"></i> Volver al Dashboard
         </a>
     </div>
@@ -27,7 +27,7 @@
     </div>
     
     {% if sistemas %}
-    <div class="table-responsive">
+    <div class="table-container table-responsive">
         <table class="table table-hover">
             <thead>
                 <tr>
@@ -42,22 +42,22 @@
             <tbody>
                 {% for sistema in sistemas %}
                 <tr>
-                    <td>{{ sistema.id }}</td>
-                    <td>
+                    <td data-label="ID">{{ sistema.id }}</td>
+                    <td data-label="Nombre">
                         <strong>{{ sistema.nombre }}</strong>
                     </td>
-                    <td>
+                    <td data-label="Descripción">
                         {% if sistema.descripcion %}
                             {{ sistema.descripcion[:100] }}{% if sistema.descripcion|length > 100 %}...{% endif %}
                         {% else %}
                             <span class="text-muted">Sin descripción</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Incidencias">
                         <span class="badge badge-info">{{ sistema.incidencias|length }}</span>
                     </td>
-                    <td>{{ sistema.fecha_creacion.strftime('%d/%m/%Y') }}</td>
-                    <td>
+                    <td data-label="Fecha Creación">{{ sistema.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                    <td data-label="Acciones">
                         <div class="btn-group" role="group">
                             <a href="{{ url_for('editar_sistema', id=sistema.id) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-edit"></i> Editar

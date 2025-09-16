@@ -17,7 +17,7 @@
     <form method="POST" action="{{ url_for('descargar_informe') }}" enctype="multipart/form-data">
         <div class="form-group">
             <label class="form-label">Formato de Descarga *</label>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 mobile-stack">
                 <label style="display: flex; align-items: center; gap: 0.5rem;">
                     <input type="radio" name="formato" value="csv" required>
                     <span>CSV (Solo datos textuales)</span>
@@ -32,7 +32,7 @@
         <div class="form-group" id="datos-informe" style="display: none;">
             <h3 style="color: var(--dark-green); margin-bottom: 1rem;">Datos del Informe</h3>
             
-            <div class="row">
+            <div class="row mobile-stack">
                 <div class="col-md-6">
                     <label class="form-label">Cliente *</label>
                     <input type="text" name="cliente" class="form-control" placeholder="Nombre del cliente" required>
@@ -43,7 +43,7 @@
                 </div>
             </div>
             
-            <div class="row mt-2">
+            <div class="row mt-2 mobile-stack">
                 <div class="col-md-6">
                     <label class="form-label">Cargo *</label>
                     <input type="text" name="cargo" class="form-control" placeholder="Cargo de la persona de contacto" required>
@@ -68,7 +68,7 @@
         <div class="form-group" id="filtros-informes" style="display: none;">
             <h3 style="color: var(--dark-green); margin-bottom: 1rem;">Filtros de Incidencias</h3>
             
-            <div class="row">
+            <div class="row mobile-stack">
                 <div class="col-md-3">
                     <label class="form-label">Cliente</label>
                     <select name="filtro_cliente" class="form-control" onchange="aplicarFiltros()">
@@ -107,7 +107,7 @@
                 </div>
             </div>
             
-            <div class="row mt-2">
+            <div class="row mt-2 mobile-stack">
                 <div class="col-md-3">
                     <label class="form-label">Estado</label>
                     <select name="filtro_estado" class="form-control" onchange="aplicarFiltros()">
@@ -181,9 +181,9 @@
             <small style="color: #666;">Seleccione al menos una incidencia para generar el informe</small>
         </div>
         
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Generar Informe</button>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar</a>
+        <div class="d-flex gap-2 mobile-stack">
+            <button type="submit" class="btn btn-primary mobile-full-width">Generar Informe</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mobile-full-width">Cancelar</a>
         </div>
         
         {% else %}
@@ -200,7 +200,7 @@
     <div class="card-header">
         <h2 class="card-title">Información sobre Formatos</h2>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 mobile-stack">
         <div class="card" style="flex: 1;">
             <div class="card-header">
                 <h3 style="color: var(--dark-green); font-size: 1.1rem;">Formato CSV</h3>

@@ -13,6 +13,8 @@
             <div class="logo">
                 <img src="{{ url_for('serve_file', filename='logo.jpg') }}" alt="ERP BACS" class="logo-img">
             </div>
+            
+            <!-- Desktop Navigation -->
             <nav>
                 <ul class="nav-menu">
                     <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
@@ -27,11 +29,45 @@
                     {% endif %}
                 </ul>
             </nav>
+            
+            <!-- Desktop User Info -->
             <div class="user-info">
                 <span>{{ current_user.nombre }} ({{ current_user.rol.nombre }})</span>
                 <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
             </div>
+            
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            </button>
         </div>
+        
+        <!-- Mobile Menu -->
+        <div class="mobile-menu" id="mobileMenu">
+            <div class="mobile-user-info">
+                <div class="user-name">{{ current_user.nombre }}</div>
+                <div class="user-role">{{ current_user.rol.nombre }}</div>
+            </div>
+            
+            <ul>
+                <li><a href="{{ url_for('dashboard') }}" onclick="closeMobileMenu()">Dashboard</a></li>
+                <li><a href="{{ url_for('incidencias') }}" onclick="closeMobileMenu()">Incidencias</a></li>
+                {% if current_user.rol.nombre == 'Administrador' %}
+                <li><a href="{{ url_for('clientes') }}" onclick="closeMobileMenu()">Clientes</a></li>
+                <li><a href="{{ url_for('sistemas') }}" onclick="closeMobileMenu()">Sistemas</a></li>
+                <li><a href="{{ url_for('usuarios') }}" onclick="closeMobileMenu()">Usuarios</a></li>
+                <li><a href="{{ url_for('roles') }}" onclick="closeMobileMenu()">Roles</a></li>
+                <li><a href="{{ url_for('indices') }}" onclick="closeMobileMenu()">Índices</a></li>
+                <li><a href="{{ url_for('informes') }}" onclick="closeMobileMenu()">Informes</a></li>
+                {% endif %}
+            </ul>
+            
+            <div class="mobile-logout">
+                <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
     </header>
     {% endif %}
 
@@ -48,5 +84,60 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <!-- JavaScript for Mobile Menu -->
+    <script>
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (mobileMenu.classList.contains('active')) {
+                closeMobileMenu();
+            } else {
+                mobileMenu.classList.add('active');
+                overlay.classList.add('active');
+                menuBtn.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+        }
+        
+        function closeMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            
+            mobileMenu.classList.remove('active');
+            overlay.classList.remove('active');
+            menuBtn.classList.remove('active');
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const mobileMenu = document.getElementById('mobileMenu');
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (mobileMenu && mobileMenu.classList.contains('active')) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    closeMobileMenu();
+                }
+            }
+        });
+        
+        // Close menu on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeMobileMenu();
+            }
+        });
+        
+        // Close menu on window resize (if screen becomes large)
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -27,6 +27,7 @@ body {
     color: var(--white);
     padding: 1rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
 }
 
 .header .container {
@@ -42,6 +43,7 @@ body {
     font-size: 1.8rem;
     font-weight: bold;
     color: var(--primary-green);
+    z-index: 1001;
 }
 
 .logo-img {
@@ -51,6 +53,7 @@ body {
     object-fit: contain;
 }
 
+/* Desktop Navigation */
 .nav-menu {
     display: flex;
     list-style: none;
@@ -95,6 +98,117 @@ body {
 
 .logout-btn:hover {
     background-color: #a0b82e;
+}
+
+/* Mobile Menu Button */
+.mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--white);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 1001;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.mobile-menu-btn:hover {
+    color: var(--primary-green);
+    background-color: rgba(255,255,255,0.1);
+}
+
+.mobile-menu-btn:active {
+    transform: scale(0.95);
+}
+
+/* Hamburger Icon Animation */
+.mobile-menu-btn.active {
+    color: var(--primary-green);
+}
+
+.mobile-menu-btn.active::before {
+    content: "✕";
+}
+
+.mobile-menu-btn:not(.active)::before {
+    content: "☰";
+}
+
+/* Mobile Menu */
+.mobile-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--dark-green);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 1000;
+    padding: 1rem 0;
+}
+
+.mobile-menu.active {
+    display: block;
+}
+
+.mobile-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.mobile-menu li {
+    margin: 0;
+}
+
+.mobile-menu a {
+    display: block;
+    color: var(--white);
+    text-decoration: none;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s;
+}
+
+.mobile-menu a:hover {
+    background-color: var(--primary-green);
+    color: var(--dark-green);
+}
+
+.mobile-menu a:last-child {
+    border-bottom: none;
+}
+
+.mobile-user-info {
+    padding: 1rem 2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 1rem;
+}
+
+.mobile-user-info .user-name {
+    color: var(--primary-green);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.mobile-user-info .user-role {
+    color: var(--white);
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.mobile-logout {
+    padding: 1rem 2rem;
+}
+
+.mobile-logout .logout-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
 }
 
 /* Main Content */
@@ -449,28 +563,23 @@ textarea.form-control {
 }
 
 @media (max-width: 768px) {
-    /* Header responsive */
-    .header .container {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 0 15px;
+    /* Mobile Menu Button */
+    .mobile-menu-btn {
+        display: block;
     }
     
+    /* Hide desktop navigation */
     .nav-menu {
-        flex-direction: column;
-        gap: 0.5rem;
-        width: 100%;
-    }
-    
-    .nav-menu a {
-        text-align: center;
-        padding: 0.75rem 1rem;
+        display: none;
     }
     
     .user-info {
-        flex-direction: column;
-        gap: 0.5rem;
-        width: 100%;
+        display: none;
+    }
+    
+    /* Header responsive */
+    .header .container {
+        padding: 0 15px;
     }
     
     /* Main content */
@@ -658,6 +767,57 @@ textarea.form-control {
         font-size: 0.7rem;
         padding: 0.2rem 0.5rem;
     }
+    
+    /* Extra small screen table improvements */
+    .table-responsive .table tbody td {
+        padding-left: 45%;
+        font-size: 0.8rem;
+    }
+    
+    .table-responsive .table tbody td:before {
+        width: 40%;
+        font-size: 0.75rem;
+    }
+    
+    /* Fix button groups in very small screens */
+    .table-responsive .table tbody td .btn-group .btn {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.4rem;
+    }
+    
+    /* Fix form elements */
+    .form-control {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 0.6rem;
+    }
+    
+    /* Fix pagination for very small screens */
+    .pagination a,
+    .pagination .current {
+        padding: 0.3rem 0.4rem;
+        font-size: 0.75rem;
+        min-width: 36px;
+    }
+    
+    /* Fix alerts */
+    .alert {
+        padding: 0.6rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Fix mobile menu */
+    .mobile-menu a {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .mobile-user-info {
+        padding: 0.8rem 1.5rem;
+    }
+    
+    .mobile-logout {
+        padding: 0.8rem 1.5rem;
+    }
 }
 
 /* Landscape orientation adjustments */
@@ -729,37 +889,32 @@ textarea.form-control {
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
-/* Mobile Navigation Improvements */
-@media (max-width: 768px) {
-    .nav-menu {
-        order: 3;
-        margin-top: 1rem;
-    }
-    
-    .user-info {
-        order: 2;
-        margin-top: 0.5rem;
-    }
-    
-    .logo {
-        order: 1;
-    }
-    
-    /* Stack navigation vertically on mobile */
-    .header .container {
-        align-items: stretch;
-    }
-    
-    .nav-menu a {
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 6px;
-        margin-bottom: 0.25rem;
-    }
-    
-    .nav-menu a:hover {
-        background-color: var(--primary-green);
-        border-color: var(--primary-green);
-    }
+/* Mobile Menu Animation */
+.mobile-menu {
+    transform: translateY(-10px);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu.active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+}
+
+.mobile-menu-overlay.active {
+    display: block;
 }
 
 /* Dashboard specific mobile improvements */
@@ -813,16 +968,83 @@ textarea.form-control {
     .form-group.third {
         width: 100%;
     }
+    
+    /* Form containers */
+    .form-container {
+        padding: 1rem;
+    }
+    
+    .form-container .card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Form buttons */
+    .form-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .form-buttons .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Form labels */
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Form controls */
+    .form-control,
+    .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 0.75rem;
+        border-radius: 6px;
+    }
+    
+    /* Textarea */
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+    
+    /* Fix d-flex gap-2 for mobile */
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .d-flex.gap-2 .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Fix justify-content-between for mobile */
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    /* Fix align-items-center for mobile */
+    .d-flex.align-items-center {
+        align-items: stretch;
+    }
 }
 
 /* Table improvements for mobile */
 @media (max-width: 768px) {
     .table-responsive {
         border: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .table-responsive .table {
         border: none;
+        min-width: 100%;
     }
     
     .table-responsive .table thead {
@@ -846,6 +1068,8 @@ textarea.form-control {
         padding: 0.5rem 0;
         position: relative;
         padding-left: 50%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .table-responsive .table tbody td:before {
@@ -857,6 +1081,29 @@ textarea.form-control {
         white-space: nowrap;
         font-weight: 600;
         color: var(--dark-green);
+        font-size: 0.85rem;
+    }
+    
+    /* Fix button groups in table cells */
+    .table-responsive .table tbody td .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+    
+    .table-responsive .table tbody td .btn-group .btn {
+        width: 100%;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    /* Fix status badges in mobile */
+    .table-responsive .table tbody td .status-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        display: inline-block;
+        margin-top: 0.25rem;
     }
 }
 
@@ -874,10 +1121,312 @@ textarea.form-control {
 .gap-1 { gap: 1rem; }
 .gap-2 { gap: 2rem; }
 
+/* Additional responsive utilities */
+.d-flex {
+    display: flex;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.mt-1 {
+    margin-top: 0.5rem;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+}
+
+.badge-info {
+    color: #fff;
+    background-color: #17a2b8;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,0.05);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,0.075);
+}
+
+.alert {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-dismissible {
+    padding-right: 4rem;
+}
+
+.btn-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    padding: 1.25rem 1rem;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.btn-close:hover {
+    opacity: 0.75;
+}
+
+.btn-group {
+    position: relative;
+    display: inline-flex;
+    vertical-align: middle;
+}
+
+.btn-outline-primary {
+    color: var(--primary-green);
+    border-color: var(--primary-green);
+    background-color: transparent;
+}
+
+.btn-outline-primary:hover {
+    color: var(--dark-green);
+    background-color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+.btn-outline-danger {
+    color: #dc3545;
+    border-color: #dc3545;
+    background-color: transparent;
+}
+
+.btn-outline-danger:hover {
+    color: #fff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Grid System */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -0.5rem;
+}
+
+.col-md-3,
+.col-md-6,
+.col-md-12 {
+    padding: 0 0.5rem;
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+.col-md-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+
+.col-md-3 {
+    flex: 0 0 25%;
+    max-width: 25%;
+}
+
+.col-md-12 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
 /* Mobile-specific utilities */
 @media (max-width: 768px) {
     .mobile-hidden { display: none !important; }
     .mobile-full-width { width: 100% !important; }
     .mobile-stack { display: block !important; }
     .mobile-center { text-align: center !important; }
+    
+    /* Fix flex layouts for mobile */
+    .d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .justify-content-between {
+        justify-content: flex-start;
+    }
+    
+    .align-items-center {
+        align-items: stretch;
+    }
+    
+    /* Button groups responsive */
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Badge responsive */
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    /* Grid responsive */
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-md-3,
+    .col-md-6,
+    .col-md-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    /* Form rows responsive */
+    .form-row {
+        display: block;
+    }
+    
+    .form-row .col-md-3,
+    .form-row .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    /* Fix overflow issues */
+    * {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Fix text overflow */
+    .table-responsive .table tbody td,
+    .card-body,
+    .form-control {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+    
+    /* Fix long URLs and emails */
+    a[href^="mailto:"],
+    a[href^="http"] {
+        word-break: break-all;
+    }
+    
+    /* Fix pagination on mobile */
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    
+    .pagination a,
+    .pagination .current {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        min-width: 44px;
+        text-align: center;
+    }
+    
+    /* Fix alerts on mobile */
+    .alert {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        word-wrap: break-word;
+    }
+    
+    /* Fix small text elements */
+    small {
+        font-size: 0.75rem;
+        line-height: 1.3;
+    }
+    
+    /* Fix informes template specific elements */
+    .d-flex.gap-2 label {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .d-flex.gap-2 label input[type="radio"] {
+        margin-right: 0.5rem;
+    }
+    
+    /* Fix scrollable areas */
+    div[style*="max-height: 400px"] {
+        max-height: 300px !important;
+    }
+    
+    /* Fix incidencia list items */
+    .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .d-flex.justify-content-between.align-items-center > div:last-child {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        width: 100%;
+    }
+    
+    .d-flex.justify-content-between.align-items-center > div:last-child span {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
 }

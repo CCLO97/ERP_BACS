@@ -10,14 +10,14 @@
 
 <div class="card">
     <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center mobile-stack">
             <h2 class="card-title">Lista de Clientes</h2>
-            <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-primary">Nuevo Cliente</a>
+            <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-primary mobile-full-width">Nuevo Cliente</a>
         </div>
     </div>
     
     {% if clientes %}
-    <div class="table-container">
+    <div class="table-container table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -33,20 +33,22 @@
             <tbody>
                 {% for cliente in clientes %}
                 <tr>
-                    <td>{{ cliente.nombre }}</td>
-                    <td>{{ cliente.tipo_documento }} {{ cliente.numero_documento }}</td>
-                    <td>{{ cliente.correo }}</td>
-                    <td>{{ cliente.telefono }}</td>
-                    <td>{{ cliente.contacto_principal or 'N/A' }}</td>
-                    <td>
+                    <td data-label="Nombre">{{ cliente.nombre }}</td>
+                    <td data-label="Documento">{{ cliente.tipo_documento }} {{ cliente.numero_documento }}</td>
+                    <td data-label="Correo">{{ cliente.correo }}</td>
+                    <td data-label="Teléfono">{{ cliente.telefono }}</td>
+                    <td data-label="Contacto Principal">{{ cliente.contacto_principal or 'N/A' }}</td>
+                    <td data-label="Sedes">
                         <span class="status-badge status-abierta">{{ cliente.sedes|length }} sede(s)</span>
                     </td>
-                    <td>
-                        <a href="{{ url_for('sedes_cliente', id=cliente.id) }}" class="btn btn-sm btn-secondary">Ver Sedes</a>
-                        <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-primary">Editar</a>
-                        <form method="POST" action="{{ url_for('eliminar_cliente', id=cliente.id) }}" style="display: inline;" onsubmit="return confirm('¿Está seguro de eliminar este cliente?')">
-                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
-                        </form>
+                    <td data-label="Acciones">
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('sedes_cliente', id=cliente.id) }}" class="btn btn-sm btn-secondary">Ver Sedes</a>
+                            <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                            <form method="POST" action="{{ url_for('eliminar_cliente', id=cliente.id) }}" style="display: inline;" onsubmit="return confirm('¿Está seguro de eliminar este cliente?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

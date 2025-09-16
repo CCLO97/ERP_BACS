@@ -10,14 +10,14 @@
 
 <div class="card">
     <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center mobile-stack">
             <h2 class="card-title">Lista de Incidencias</h2>
-            <a href="{{ url_for('nueva_incidencia') }}" class="btn btn-primary">Nueva Incidencia</a>
+            <a href="{{ url_for('nueva_incidencia') }}" class="btn btn-primary mobile-full-width">Nueva Incidencia</a>
         </div>
     </div>
     
     {% if incidencias.items %}
-    <div class="table-container">
+    <div class="table-container table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -34,19 +34,21 @@
             <tbody>
                 {% for incidencia in incidencias.items %}
                 <tr>
-                    <td>{{ incidencia.indice }}</td>
-                    <td>{{ incidencia.titulo }}</td>
-                    <td>{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</td>
-                    <td>{{ incidencia.sede_obj.nombre if incidencia.sede_obj else 'N/A' }}</td>
-                    <td>
+                    <td data-label="Índice">{{ incidencia.indice }}</td>
+                    <td data-label="Título">{{ incidencia.titulo }}</td>
+                    <td data-label="Cliente">{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</td>
+                    <td data-label="Sede">{{ incidencia.sede_obj.nombre if incidencia.sede_obj else 'N/A' }}</td>
+                    <td data-label="Estado">
                         <span class="status-badge status-{{ incidencia.estado.lower().replace(' ', '-') }}">
                             {{ incidencia.estado }}
                         </span>
                     </td>
-                    <td>{{ incidencia.tecnico.nombre if incidencia.tecnico else 'Sin asignar' }}</td>
-                    <td>{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</td>
-                    <td>
-                        <a href="{{ url_for('editar_incidencia', id=incidencia.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                    <td data-label="Técnico">{{ incidencia.tecnico.nombre if incidencia.tecnico else 'Sin asignar' }}</td>
+                    <td data-label="Fecha Inicio">{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+                    <td data-label="Acciones">
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('editar_incidencia', id=incidencia.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
