@@ -253,11 +253,16 @@ def incidencias():
 @login_required
 def nueva_incidencia():
     if request.method == 'POST':
-        # Obtener el siguiente índice disponible
-        indice_obj = Indice.query.first()
+        # Obtener el índice seleccionado
+        indice_id = request.form.get('indice_id')
+        if not indice_id:
+            flash('Debe seleccionar un índice', 'error')
+            return redirect(url_for('nueva_incidencia'))
+        
+        indice_obj = Indice.query.get(int(indice_id))
         if not indice_obj:
-            flash('No hay índices configurados. Contacte al administrador.', 'error')
-            return redirect(url_for('incidencias'))
+            flash('El índice seleccionado no existe', 'error')
+            return redirect(url_for('nueva_incidencia'))
         
         nuevo_indice = indice_obj.generar_siguiente()
         
@@ -338,12 +343,18 @@ def nueva_incidencia():
         flash('Incidencia creada exitosamente', 'success')
         return redirect(url_for('incidencias'))
     
-    # Obtener clientes, sedes y sistemas para los selects
+    # Obtener clientes, sedes, sistemas e índices para los selects
     clientes = Cliente.query.filter_by(activo=True).all()
     sedes = Sede.query.filter_by(activo=True).all()
     sistemas = Sistema.query.filter_by(activo=True).all()
     tecnicos = User.query.join(Rol).filter(Rol.nombre == 'Técnico').all()
-    return render_template('nueva_incidencia.html', clientes=clientes, sedes=sedes, sistemas=sistemas, tecnicos=tecnicos)
+    indices = Indice.query.all()
+    
+    if not indices:
+        flash('No hay índices configurados. Contacte al administrador para crear índices.', 'error')
+        return redirect(url_for('incidencias'))
+    
+    return render_template('nueva_incidencia.html', clientes=clientes, sedes=sedes, sistemas=sistemas, tecnicos=tecnicos, indices=indices)
 
 @app.route('/incidencias/<int:id>/editar', methods=['GET', 'POST'])
 @login_required

@@ -20,6 +20,22 @@
         </div>
         
         <div class="form-group">
+            <label for="indice_id" class="form-label">Índice *</label>
+            <select id="indice_id" name="indice_id" class="form-control" required onchange="actualizarIndicePreview()">
+                <option value="">Seleccionar índice...</option>
+                {% for indice in indices %}
+                <option value="{{ indice.id }}" data-prefijo="{{ indice.prefijo }}" data-numero="{{ indice.numero_actual }}">
+                    {{ indice.prefijo }} - Próximo: {{ indice.prefijo }}_{(indice.numero_actual + 1):06d}
+                </option>
+                {% endfor %}
+            </select>
+            <small style="color: #666;">El índice se generará automáticamente con el formato seleccionado</small>
+            <div id="indice-preview" style="margin-top: 0.5rem; padding: 0.5rem; background-color: #f8f9fa; border-radius: 4px; display: none;">
+                <strong>Índice que se asignará:</strong> <span id="indice-texto"></span>
+            </div>
+        </div>
+        
+        <div class="form-group">
             <label for="descripcion" class="form-label">Descripción *</label>
             <textarea id="descripcion" name="descripcion" class="form-control" required rows="5"></textarea>
         </div>
@@ -413,5 +429,24 @@ document.addEventListener('change', function(e) {
         actualizarResumen();
     }
 });
+
+// Función para actualizar la vista previa del índice
+function actualizarIndicePreview() {
+    const indiceSelect = document.getElementById('indice_id');
+    const previewDiv = document.getElementById('indice-preview');
+    const indiceTexto = document.getElementById('indice-texto');
+    
+    if (indiceSelect.value) {
+        const selectedOption = indiceSelect.options[indiceSelect.selectedIndex];
+        const prefijo = selectedOption.getAttribute('data-prefijo');
+        const numeroActual = parseInt(selectedOption.getAttribute('data-numero'));
+        const proximoIndice = `${prefijo}_${(numeroActual + 1).toString().padStart(6, '0')}`;
+        
+        indiceTexto.textContent = proximoIndice;
+        previewDiv.style.display = 'block';
+    } else {
+        previewDiv.style.display = 'none';
+    }
+}
 </script>
 {% endblock %}
