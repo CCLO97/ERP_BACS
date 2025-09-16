@@ -16,13 +16,30 @@ def migrar_base_datos():
     print("🚀 Iniciando migración de base de datos ERP BACS...")
     print("=" * 60)
     
+    # Verificar que existe el archivo .env
+    if not os.path.exists('.env'):
+        print("❌ Error: No se encontró el archivo .env")
+        print("📝 Por favor:")
+        print("   1. Copia env_example.txt a .env")
+        print("   2. Configura tus credenciales de MySQL")
+        print("   3. Ejecuta nuevamente: python migrar_db.py")
+        return 1
+    
     try:
         # Importar la aplicación y configuración
         from app import app, db
         from config import Config
         
         print("✅ Aplicación importada correctamente")
-        print(f"📊 Conectando a base de datos: {Config.DB_NAME}")
+        print(f"📊 Conectando a base de datos: {Config.SQLALCHEMY_DATABASE_URI}")
+        
+        # Verificar que las credenciales están configuradas
+        if not Config.INITIAL_USER_EMAIL or not Config.INITIAL_USER_PASSWORD:
+            print("❌ Error: Credenciales de usuario inicial no configuradas")
+            print("📝 Por favor configura en tu archivo .env:")
+            print("   INITIAL_USER_EMAIL=tu_email@empresa.com")
+            print("   INITIAL_USER_PASSWORD=tu_contraseña_segura")
+            return 1
         
         with app.app_context():
             # Crear todas las tablas usando SQLAlchemy
@@ -103,9 +120,9 @@ def migrar_base_datos():
             if not Indice.query.first():
                 print("🔧 Creando índices por defecto...")
                 indices = [
-                    Indice(nombre='Incidencias', prefijo='INC', numero_actual=0),
-                    Indice(nombre='Informes', prefijo='INF', numero_actual=0),
-                    Indice(nombre='Clientes', prefijo='CLI', numero_actual=0)
+                    Indice(prefijo='INC', numero_actual=0, formato='000000'),
+                    Indice(prefijo='INF', numero_actual=0, formato='000000'),
+                    Indice(prefijo='CLI', numero_actual=0, formato='000000')
                 ]
                 for indice in indices:
                     db.session.add(indice)
@@ -116,7 +133,7 @@ def migrar_base_datos():
             print("🎉 ¡Migración completada exitosamente!")
             print("=" * 60)
             print("📋 Resumen de la migración:")
-            print(f"   • Base de datos: {Config.DB_NAME}")
+            print(f"   • Base de datos: {Config.SQLALCHEMY_DATABASE_URI}")
             print(f"   • Tablas creadas: {len(db.metadata.tables)}")
             print(f"   • Roles creados: {Rol.query.count()}")
             print(f"   • Sistemas creados: {Sistema.query.count()}")
