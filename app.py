@@ -2052,128 +2052,14 @@ def generar_pdf(incidencias):
 
 # Función para inicializar la base de datos
 def init_db():
+    """Función simplificada para inicializar la base de datos"""
     with app.app_context():
         try:
             print("🔧 Inicializando base de datos...")
             
-            # Crear tabla sistema si no existe
-            db.engine.execute("""
-                CREATE TABLE IF NOT EXISTS sistema (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    nombre VARCHAR(100) NOT NULL UNIQUE,
-                    descripcion TEXT,
-                    activo BOOLEAN DEFAULT TRUE,
-                    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # Insertar sistemas por defecto
-            sistemas_default = [
-                ('CCTV', 'Sistema de videovigilancia y cámaras de seguridad'),
-                ('Control de Acceso', 'Sistemas de control de acceso y tarjetas'),
-                ('Alarmas', 'Sistemas de alarmas y detección de intrusos'),
-                ('Redes', 'Infraestructura de red y comunicaciones'),
-                ('Automatización', 'Sistemas de automatización y control'),
-                ('Iluminación', 'Sistemas de iluminación inteligente'),
-                ('Climatización', 'Sistemas de climatización y HVAC'),
-                ('Seguridad', 'Sistemas de seguridad perimetral'),
-                ('Comunicaciones', 'Sistemas de comunicación interna'),
-                ('Otros', 'Otros sistemas y servicios')
-            ]
-            
-            for nombre, descripcion in sistemas_default:
-                db.engine.execute(f"""
-                    INSERT IGNORE INTO sistema (nombre, descripcion) 
-                    VALUES ('{nombre}', '{descripcion}')
-                """)
-            
-            # Verificar y agregar columnas faltantes en incidencia
-            try:
-                db.engine.execute("SELECT sistema_id FROM incidencia LIMIT 1")
-                print("✅ Columna sistema_id existe")
-            except Exception as e:
-                if "Unknown column 'sistema_id'" in str(e):
-                    print("🔧 Agregando columna sistema_id...")
-                    db.engine.execute("""
-                        ALTER TABLE incidencia 
-                        ADD COLUMN sistema_id INT NOT NULL DEFAULT 1
-                    """)
-                    print("✅ Columna sistema_id agregada")
-            
-            try:
-                db.engine.execute("SELECT titulos_imagenes FROM incidencia LIMIT 1")
-                print("✅ Columna titulos_imagenes existe")
-            except Exception as e:
-                if "Unknown column 'titulos_imagenes'" in str(e):
-                    print("🔧 Agregando columna titulos_imagenes...")
-                    db.engine.execute("""
-                        ALTER TABLE incidencia 
-                        ADD COLUMN titulos_imagenes TEXT
-                    """)
-                    print("✅ Columna titulos_imagenes agregada")
-            
-            # Agregar foreign key
-            try:
-                db.engine.execute("""
-                    ALTER TABLE incidencia 
-                    ADD FOREIGN KEY (sistema_id) REFERENCES sistema(id)
-                """)
-            except:
-                pass  # La foreign key puede ya existir
-            
-            print("✅ Estructura de BD verificada y corregida")
-            
+            # Solo crear las tablas básicas
             db.create_all()
-            
-            # Crear roles si no existen
-            if not Rol.query.first():
-                roles = [
-                    Rol(nombre='Administrador', descripcion='Acceso completo al sistema'),
-                    Rol(nombre='Coordinador', descripcion='Gestión de incidencias y asignación a técnicos'),
-                    Rol(nombre='Técnico', descripcion='Edición de incidencias asignadas'),
-                    Rol(nombre='Usuario', descripcion='Usuario estándar del sistema')
-                ]
-                for rol in roles:
-                    db.session.add(rol)
-            
-            # Crear sistemas por defecto si no existen
-            if not Sistema.query.first():
-                sistemas = [
-                    Sistema(nombre='CCTV', descripcion='Sistema de videovigilancia y cámaras de seguridad'),
-                    Sistema(nombre='Control de Acceso', descripcion='Sistemas de control de acceso y tarjetas'),
-                    Sistema(nombre='Alarmas', descripcion='Sistemas de alarmas y detección de intrusos'),
-                    Sistema(nombre='Redes', descripcion='Infraestructura de red y comunicaciones'),
-                    Sistema(nombre='Automatización', descripcion='Sistemas de automatización y control'),
-                    Sistema(nombre='Iluminación', descripcion='Sistemas de iluminación inteligente'),
-                    Sistema(nombre='Climatización', descripcion='Sistemas de climatización y HVAC'),
-                    Sistema(nombre='Seguridad', descripcion='Sistemas de seguridad perimetral'),
-                    Sistema(nombre='Comunicaciones', descripcion='Sistemas de comunicación interna'),
-                    Sistema(nombre='Otros', descripcion='Otros sistemas y servicios')
-                ]
-                for sistema in sistemas:
-                    db.session.add(sistema)
-            
-            # Crear índice por defecto si no existe
-            if not Indice.query.first():
-                indice = Indice(prefijo='INC', numero_actual=0, formato='000000')
-                db.session.add(indice)
-            
-            # Crear usuario inicial si no existe
-            if not User.query.filter_by(correo=app.config['INITIAL_USER_EMAIL']).first():
-                admin_rol = Rol.query.filter_by(nombre='Administrador').first()
-                usuario_inicial = User(
-                    nombre='Cristian Londono',
-                    tipo_documento='CC',
-                    numero_documento='12345678',
-                    telefono='3001234567',
-                    correo=app.config['INITIAL_USER_EMAIL'],
-                    password_hash=generate_password_hash(app.config['INITIAL_USER_PASSWORD']),
-                    rol_id=admin_rol.id
-                )
-                db.session.add(usuario_inicial)
-            
-            db.session.commit()
-            print("Base de datos inicializada correctamente")
+            print("✅ Tablas creadas correctamente")
             
         except Exception as e:
             print(f"Error inicializando base de datos: {e}")

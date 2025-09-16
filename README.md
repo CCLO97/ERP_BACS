@@ -43,17 +43,60 @@ pip install -r requirements.txt
 
 #### 3. Configurar la Base de Datos MySQL
 
-1. Abre MySQL Workbench o tu cliente MySQL preferido
+1. Abre MySQL Workbench, phpMyAdmin o tu cliente MySQL preferido
 2. Crea una nueva base de datos llamada `erp_bacs`:
    ```sql
    CREATE DATABASE erp_bacs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
 
-#### 4. Configurar Variables de Entorno
+#### 4. Migración de la Base de Datos
+
+El sistema utiliza SQLAlchemy para la gestión de la base de datos. **IMPORTANTE**: Debes ejecutar la migración ANTES de usar la aplicación.
+
+**Pasos para la migración:**
+
+1. **Ejecutar script de migración**:
+   ```bash
+   python migrar_db.py
+   ```
+
+2. **Verificar la migración**: El script te mostrará un resumen de lo que se creó:
+   - ✅ Tablas creadas
+   - ✅ Roles del sistema
+   - ✅ Sistemas por defecto
+   - ✅ Usuario administrador inicial
+   - ✅ Índices de numeración
+
+3. **Verificar en phpMyAdmin**: Accede a `http://localhost:8080/phpmyadmin` y verifica que la base de datos `erp_bacs` tenga todas las tablas
+
+**Tablas que se crean automáticamente:**
+- `user` - Gestión de usuarios del sistema
+- `rol` - Roles y permisos
+- `cliente` - Información de clientes
+- `sede` - Sedes de los clientes
+- `sistema` - Catálogo de sistemas tecnológicos
+- `incidencia` - Registro de incidencias
+- `indice` - Sistema de numeración automática
+- `plantilla_informe` - Plantillas para generación de informes
+
+**Datos iniciales creados:**
+- **Roles**: Administrador, Coordinador, Técnico, Usuario
+- **Sistemas**: CCTV, Control de Acceso, Alarmas, Redes, etc.
+- **Usuario administrador**: Con las credenciales de tu archivo `.env`
+- **Índices**: Para numeración automática de incidencias e informes
+
+**Si hay errores durante la migración:**
+1. Verifica que MySQL esté ejecutándose
+2. Verifica que la base de datos `erp_bacs` exista
+3. Verifica que las credenciales en `.env` sean correctas
+4. Verifica que el puerto de MySQL sea 3306 (no 8080)
+
+#### 5. Configurar Variables de Entorno
 
 1. Copia el archivo `env_example.txt` y renómbralo a `.env`
 2. Edita el archivo `.env` con tus datos de conexión:
 
+**Configuración estándar (puerto MySQL 3306):**
 ```env
 # Configuración de la base de datos
 DB_HOST=localhost
@@ -66,23 +109,98 @@ SECRET_KEY=tu_clave_secreta_muy_segura_aqui_2024
 FLASK_ENV=development
 FLASK_DEBUG=True
 
-# Usuario inicial del sistema
-INITIAL_USER_EMAIL=tu_email@empresa.com
-INITIAL_USER_PASSWORD=tu_contraseña_segura
+# Usuario inicial del sistema (administrador)
+INITIAL_USER_EMAIL=admin@tuempresa.com
+INITIAL_USER_PASSWORD=tu_contraseña_segura_aqui
 ```
 
-#### 5. Ejecutar el Sistema
+**Configuración con phpMyAdmin en puerto 8080:**
+```env
+# Configuración de la base de datos (puerto MySQL 3306, phpMyAdmin en 8080)
+DB_HOST=localhost
+DB_USER=tu_usuario_mysql
+DB_PASSWORD=tu_contraseña_mysql
+DB_NAME=erp_bacs
+
+# Configuración de la aplicación
+SECRET_KEY=tu_clave_secreta_muy_segura_aqui_2024
+FLASK_ENV=development
+FLASK_DEBUG=True
+
+# Usuario inicial del sistema (administrador)
+INITIAL_USER_EMAIL=admin@tuempresa.com
+INITIAL_USER_PASSWORD=tu_contraseña_segura_aqui
+```
+
+**Notas importantes:**
+- El puerto de phpMyAdmin (8080) es solo para la interfaz web de administración
+- El puerto de MySQL sigue siendo 3306 por defecto
+- Si tu MySQL está en un puerto diferente, agrega `:PUERTO` al final del `DB_HOST` (ej: `localhost:3307`)
+- Asegúrate de que el archivo `.env` esté en tu `.gitignore` para no subir credenciales a GitHub
+
+**Configuración específica para phpMyAdmin en puerto 8080:**
+- **Acceso a phpMyAdmin**: `http://localhost:8080/phpmyadmin`
+- **Configuración del .env**: NO cambies el puerto en DB_HOST, sigue siendo 3306
+- **Ejemplo de configuración correcta**:
+  ```env
+  DB_HOST=localhost          # Puerto 3306 (MySQL)
+  DB_USER=tu_usuario_mysql
+  DB_PASSWORD=tu_contraseña_mysql
+  DB_NAME=erp_bacs
+  ```
+- **Para acceder a phpMyAdmin**: Usa el puerto 8080 solo en el navegador, no en la configuración de la aplicación
+
+#### 6. Ejecutar el Sistema
 
 ```bash
 # Ejecutar la aplicación
 python ejecutar_app.py
 ```
 
-#### 6. Acceder al Sistema
+#### 7. Acceder al Sistema
 
 1. Abre tu navegador web
 2. Ve a la dirección: `http://localhost:5000`
 3. Inicia sesión con las credenciales configuradas en el archivo `.env`
+
+#### 8. Acceso a phpMyAdmin (Opcional)
+
+Si tienes phpMyAdmin instalado y configurado en el puerto 8080:
+
+1. Abre tu navegador web
+2. Ve a la dirección: `http://localhost:8080/phpmyadmin`
+3. Inicia sesión con las mismas credenciales de MySQL configuradas en tu `.env`
+4. Selecciona la base de datos `erp_bacs` para ver las tablas creadas automáticamente
+
+#### 9. Solución de Problemas Comunes
+
+**Error: "Table 'erp_bacs.user' doesn't exist"**
+- **Causa**: No se ejecutó la migración de la base de datos
+- **Solución**: Ejecuta `python migrar_db.py` antes de usar la aplicación
+
+**Error: "'Engine' object has no attribute 'execute'"**
+- **Causa**: Problema de compatibilidad con SQLAlchemy
+- **Solución**: Usa el script `migrar_db.py` en lugar de la función init_db()
+
+**Error de conexión a MySQL**
+- **Causa**: MySQL no está ejecutándose o credenciales incorrectas
+- **Solución**: 
+  1. Verifica que MySQL esté ejecutándose
+  2. Verifica las credenciales en el archivo `.env`
+  3. Verifica que la base de datos `erp_bacs` exista
+
+**Error: "Access denied for user"**
+- **Causa**: Credenciales incorrectas o usuario sin permisos
+- **Solución**: 
+  1. Verifica usuario y contraseña en `.env`
+  2. Asegúrate de que el usuario tenga permisos en la base de datos `erp_bacs`
+
+**phpMyAdmin no carga en puerto 8080**
+- **Causa**: phpMyAdmin no está configurado o no está ejecutándose
+- **Solución**: 
+  1. Verifica que phpMyAdmin esté instalado y configurado
+  2. Verifica que el servidor web (Apache/Nginx) esté ejecutándose
+  3. Accede directamente a MySQL con MySQL Workbench o línea de comandos
 
 ## 📊 Análisis de Requerimientos del Sistema
 
