@@ -436,29 +436,427 @@ textarea.form-control {
     border-color: var(--primary-green);
 }
 
-/* Responsive */
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-content {
+        max-width: 100%;
+        padding: 0 15px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
 @media (max-width: 768px) {
+    /* Header responsive */
     .header .container {
         flex-direction: column;
         gap: 1rem;
+        padding: 0 15px;
     }
     
     .nav-menu {
         flex-direction: column;
         gap: 0.5rem;
+        width: 100%;
     }
     
-    .stats-grid {
-        grid-template-columns: 1fr;
+    .nav-menu a {
+        text-align: center;
+        padding: 0.75rem 1rem;
     }
     
+    .user-info {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    /* Main content */
     .main-content {
         padding: 0 10px;
+        margin: 1rem auto;
     }
     
+    .page-header {
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    /* Cards */
+    .card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    /* Tables responsive */
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .table {
+        min-width: 600px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Forms */
+    .form-control {
+        padding: 0.75rem;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    /* Buttons */
+    .btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .btn-sm {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    /* Login */
     .login-card {
         margin: 1rem;
         padding: 2rem;
+        max-width: 100%;
+    }
+    
+    .login-title {
+        font-size: 1.5rem;
+    }
+    
+    .login-logo h1 {
+        font-size: 2rem;
+    }
+    
+    /* Quick actions responsive */
+    .quick-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .quick-actions .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Extra small devices */
+    .header {
+        padding: 0.5rem 0;
+    }
+    
+    .header .container {
+        padding: 0 10px;
+    }
+    
+    .logo {
+        font-size: 1.5rem;
+    }
+    
+    .main-content {
+        padding: 0 5px;
+        margin: 0.5rem auto;
+    }
+    
+    .page-header {
+        padding: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.3rem;
+    }
+    
+    .page-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .stat-card {
+        padding: 0.75rem;
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+    }
+    
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .card-title {
+        font-size: 1rem;
+    }
+    
+    .form-control {
+        padding: 0.5rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    .login-card {
+        margin: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .login-title {
+        font-size: 1.3rem;
+    }
+    
+    .login-logo h1 {
+        font-size: 1.8rem;
+    }
+    
+    /* Table adjustments for very small screens */
+    .table th,
+    .table td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
+    
+    /* Status badges */
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+    .login-container {
+        padding: 1rem 0;
+    }
+    
+    .login-card {
+        margin: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .page-header {
+        padding: 1rem;
+    }
+    
+    .main-content {
+        margin: 0.5rem auto;
+    }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        min-height: 44px; /* iOS recommended touch target */
+    }
+    
+    .nav-menu a {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .form-control {
+        min-height: 44px;
+    }
+    
+    .pagination a {
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Quick Actions */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.quick-actions .btn {
+    width: 100%;
+    margin-bottom: 0;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.quick-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Mobile Navigation Improvements */
+@media (max-width: 768px) {
+    .nav-menu {
+        order: 3;
+        margin-top: 1rem;
+    }
+    
+    .user-info {
+        order: 2;
+        margin-top: 0.5rem;
+    }
+    
+    .logo {
+        order: 1;
+    }
+    
+    /* Stack navigation vertically on mobile */
+    .header .container {
+        align-items: stretch;
+    }
+    
+    .nav-menu a {
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .nav-menu a:hover {
+        background-color: var(--primary-green);
+        border-color: var(--primary-green);
+    }
+}
+
+/* Dashboard specific mobile improvements */
+@media (max-width: 768px) {
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .dashboard-stats .stat-card {
+        text-align: center;
+        padding: 1.5rem 1rem;
+    }
+    
+    .dashboard-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .dashboard-actions .btn {
+        padding: 1rem;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+    
+    .recent-incidents {
+        margin-top: 1.5rem;
+    }
+    
+    .user-info-card {
+        margin-top: 1.5rem;
+    }
+}
+
+/* Form improvements for mobile */
+@media (max-width: 768px) {
+    .form-row {
+        display: block;
+    }
+    
+    .form-row .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group.half {
+        width: 100%;
+    }
+    
+    .form-group.third {
+        width: 100%;
+    }
+}
+
+/* Table improvements for mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        border: none;
+    }
+    
+    .table-responsive .table {
+        border: none;
+    }
+    
+    .table-responsive .table thead {
+        display: none;
+    }
+    
+    .table-responsive .table tbody tr {
+        display: block;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background-color: var(--white);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .table-responsive .table tbody td {
+        display: block;
+        text-align: left;
+        border: none;
+        padding: 0.5rem 0;
+        position: relative;
+        padding-left: 50%;
+    }
+    
+    .table-responsive .table tbody td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: 600;
+        color: var(--dark-green);
     }
 }
 
@@ -475,3 +873,11 @@ textarea.form-control {
 .align-items-center { align-items: center; }
 .gap-1 { gap: 1rem; }
 .gap-2 { gap: 2rem; }
+
+/* Mobile-specific utilities */
+@media (max-width: 768px) {
+    .mobile-hidden { display: none !important; }
+    .mobile-full-width { width: 100% !important; }
+    .mobile-stack { display: block !important; }
+    .mobile-center { text-align: center !important; }
+}

@@ -9,7 +9,7 @@
 </div>
 
 <!-- Estadísticas -->
-<div class="stats-grid">
+<div class="stats-grid dashboard-stats">
     <div class="stat-card">
         <div class="stat-number">{{ stats.total }}</div>
         <div class="stat-label">Total Incidencias</div>
@@ -33,7 +33,7 @@
     <div class="card-header">
         <h2 class="card-title">Acciones Rápidas</h2>
     </div>
-    <div class="d-flex gap-2">
+    <div class="quick-actions dashboard-actions">
         <a href="{{ url_for('nueva_incidencia') }}" class="btn btn-primary">Nueva Incidencia</a>
         <a href="{{ url_for('incidencias') }}" class="btn btn-secondary">Ver Todas las Incidencias</a>
         {% if current_user.rol.nombre == 'Administrador' %}
@@ -45,12 +45,12 @@
 </div>
 
 <!-- Incidencias recientes -->
-<div class="card">
+<div class="card recent-incidents">
     <div class="card-header">
         <h2 class="card-title">Incidencias Recientes</h2>
     </div>
     {% if incidencias_recientes %}
-    <div class="table-container">
+    <div class="table-container table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -65,16 +65,16 @@
             <tbody>
                 {% for incidencia in incidencias_recientes %}
                 <tr>
-                    <td>{{ incidencia.indice }}</td>
-                    <td>{{ incidencia.titulo }}</td>
-                    <td>{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</td>
-                    <td>
+                    <td data-label="Índice">{{ incidencia.indice }}</td>
+                    <td data-label="Título">{{ incidencia.titulo }}</td>
+                    <td data-label="Cliente">{{ incidencia.cliente_obj.nombre if incidencia.cliente_obj else 'N/A' }}</td>
+                    <td data-label="Estado">
                         <span class="status-badge status-{{ incidencia.estado.lower().replace(' ', '-') }}">
                             {{ incidencia.estado }}
                         </span>
                     </td>
-                    <td>{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</td>
-                    <td>
+                    <td data-label="Fecha">{{ incidencia.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+                    <td data-label="Acciones">
                         <a href="{{ url_for('editar_incidencia', id=incidencia.id) }}" class="btn btn-sm btn-primary">Editar</a>
                     </td>
                 </tr>
@@ -88,11 +88,11 @@
 </div>
 
 <!-- Información del usuario -->
-<div class="card">
+<div class="card user-info-card">
     <div class="card-header">
         <h2 class="card-title">Información de Usuario</h2>
     </div>
-    <div class="d-flex justify-content-between">
+    <div class="d-flex justify-content-between mobile-stack">
         <div>
             <p><strong>Nombre:</strong> {{ current_user.nombre }}</p>
             <p><strong>Rol:</strong> {{ current_user.rol.nombre }}</p>
