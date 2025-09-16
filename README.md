@@ -37,6 +37,7 @@ source venv/bin/activate
 
 ```bash
 # Instalar todas las librerías necesarias
+python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
