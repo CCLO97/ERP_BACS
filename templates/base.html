@@ -11,7 +11,9 @@
     <header class="header">
         <div class="container">
             <div class="logo">
-                <img src="{{ url_for('serve_file', filename='logo.jpg') }}" alt="ERP BACS" class="logo-img">
+                <a href="{{ url_for('dashboard') }}" class="logo-link">
+                    <img src="{{ url_for('serve_file', filename='logo.jpg') }}" alt="ERP BACS" class="logo-img">
+                </a>
             </div>
             
             <!-- Desktop Navigation -->
@@ -112,6 +114,16 @@
             menuBtn.classList.remove('active');
             document.body.style.overflow = ''; // Restore scrolling
         }
+        
+        // Handle mobile menu clicks
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.mobile-menu a')) {
+                const link = event.target.closest('.mobile-menu a');
+                console.log('Clicked on:', link.textContent.trim());
+                // Close menu after click
+                closeMobileMenu();
+            }
+        });
         
         // Close menu when clicking outside
         document.addEventListener('click', function(event) {

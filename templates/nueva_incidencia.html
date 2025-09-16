@@ -25,7 +25,7 @@
                 <option value="">Seleccionar índice...</option>
                 {% for indice in indices %}
                 <option value="{{ indice.id }}" data-prefijo="{{ indice.prefijo }}" data-numero="{{ indice.numero_actual }}">
-                    {{ indice.prefijo }} - Próximo: {{ indice.prefijo }}_{(indice.numero_actual + 1):06d}
+                    {{ indice.prefijo }}
                 </option>
                 {% endfor %}
             </select>

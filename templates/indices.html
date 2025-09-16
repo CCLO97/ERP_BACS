@@ -52,7 +52,7 @@
                                 <td data-label="ID">{{ indice.id }}</td>
                                 <td data-label="Prefijo"><strong>{{ indice.prefijo }}</strong></td>
                                 <td data-label="Número Actual">{{ indice.numero_actual }}</td>
-                                <td data-label="Próximo Índice"><code>{{ indice.prefijo }}_{(indice.numero_actual + 1):06d}</code></td>
+                                <td data-label="Próximo Índice"><code>{{ indice.prefijo }}_{{ "%06d"|format(indice.numero_actual + 1) }}</code></td>
                                 <td data-label="Incidencias">
                                     {% set count = indice.numero_actual %}
                                     <span class="badge bg-info">{{ count }} incidencia{{ 's' if count != 1 else '' }}</span>
