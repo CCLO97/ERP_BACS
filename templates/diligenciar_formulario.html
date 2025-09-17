@@ -217,6 +217,7 @@
                     <i class="icon-check"></i> Completar Formulario
                 </button>
             </div>
+            <div class="form-scroll-spacer"></div>
         </form>
     </div>
 </div>
@@ -389,6 +390,24 @@
 .foto-item .foto-info small {
     display: block;
     margin: 1px 0;
+}
+
+/* Espaciador para permitir padding/scroll cuando el teclado o selects empujan el viewport */
+.form-scroll-spacer { height: 80px; }
+
+/* Contenedor del formulario: permitir scroll y padding inferior en móviles */
+.form-container {
+    padding-bottom: 80px;
+}
+
+/* Hacer selects responsivos y accesibles al fondo */
+select.form-control, .menu-select, .form-control {
+    max-width: 100%;
+}
+
+@media (max-width: 576px) {
+    .form-scroll-spacer { height: 120px; }
+    .form-container { padding-bottom: 120px; }
 }
 
 @media (max-width: 768px) {

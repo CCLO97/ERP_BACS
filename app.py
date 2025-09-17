@@ -2810,7 +2810,30 @@ def generar_pdf_simple(respuesta_formulario):
         ]))
         
         story.append(header_table)
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 12))
+        # Descripción del formulario (si existe)
+        try:
+            from xml.sax.saxutils import escape
+            desc = getattr(respuesta_formulario.formulario, 'descripcion', '') or ''
+            if isinstance(desc, str) and desc.strip():
+                desc_html = escape(desc).replace('\n', '<br/>')
+                from reportlab.lib.styles import ParagraphStyle
+                desc_style = ParagraphStyle(
+                    name='DescStyle',
+                    parent=styles['Normal'],
+                    fontName='Helvetica',
+                    fontSize=10,
+                    leading=13,
+                    textColor=colors.HexColor('#34495e'),
+                    spaceAfter=10,
+                )
+                story.append(Paragraph(f"<b>Descripción:</b> {desc_html}", desc_style))
+                story.append(Spacer(1, 12))
+            else:
+                story.append(Spacer(1, 8))
+        except Exception as e:
+            print(f"DEBUG: No se pudo renderizar descripción: {e}")
+            story.append(Spacer(1, 8))
         
         # Información del diligenciador
         info_text = f"""
@@ -3213,18 +3236,24 @@ def generar_pdf_formulario(respuesta_formulario):
         )
         
         # ========================================
-        # ENCABEZADO DEL PDF - NO TOCAR ESTA SECCIÓN
+        # ENCABEZADO DEL PDF (tabla 3 celdas: logo | título | versión/fecha)
         # ========================================
         header_data = []
-        logo_cell = obtener_logo_pdf(max_width=80, max_height=40)
+        logo_cell = obtener_logo_pdf(max_width=70, max_height=35)
         
         # Fecha de creación del formulario (estable)
         from datetime import datetime
-        fecha_creacion = datetime.now().strftime("%d/%m/%Y")
+        fecha_creacion = datetime.now().strftime("%d/%m/%Y")  # editable manualmente luego si deseas
+        version_text = "Versión: 1"
+
+        # Celdas como Paragraph para controlar alineaciones
+        titulo_para = Paragraph(f"<para align=center><b>{respuesta_formulario.formulario.nombre}</b></para>", styles['Title'])
+        derecha_para = Paragraph(f"<para align=right>{version_text}<br/>Fecha: {fecha_creacion}</para>", styles['Normal'])
+
+        header_data.append([logo_cell, titulo_para, derecha_para])
         
-        header_data.append([logo_cell, respuesta_formulario.formulario.nombre, f'Fecha: {fecha_creacion}'])
-        
-        header_table = Table(header_data, colWidths=[100, 220, 80])
+        # Anchos más generosos para el título centrado
+        header_table = Table(header_data, colWidths=[80, 360, 130])
         header_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (0, 0), 'LEFT'),      # Logo a la izquierda
             ('ALIGN', (1, 0), (1, 0), 'CENTER'),    # Título centrado
@@ -3237,16 +3266,27 @@ def generar_pdf_formulario(respuesta_formulario):
             ('LINEBELOW', (0, 0), (-1, -1), 2, colors.black),
         ]))
         # ========================================
-        # FIN ENCABEZADO - NO MODIFICAR
+        # FIN ENCABEZADO
         # ========================================
         
         story.append(header_table)
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 12))
+        # Descripción del formulario (simple)
+        try:
+            from xml.sax.saxutils import escape
+            desc = getattr(respuesta_formulario.formulario, 'descripcion', '') or ''
+            if isinstance(desc, str) and desc.strip():
+                desc_html = escape(desc).replace('\n', '<br/>')
+                story.append(Paragraph(f"<b>Descripción:</b> {desc_html}", value_style))
+                story.append(Spacer(1, 14))
+            else:
+                story.append(Spacer(1, 8))
+        except Exception:
+            story.append(Spacer(1, 8))
         
         # Información del diligenciador
         info_text = f"""
         <b>Diligenciado por:</b> {respuesta_formulario.usuario.nombre}<br/>
-        <b>Rol:</b> {respuesta_formulario.usuario.rol.nombre}<br/>
         <b>Fecha de diligenciamiento:</b> {respuesta_formulario.fecha_diligenciamiento.strftime('%d/%m/%Y %H:%M')}
         """
         
