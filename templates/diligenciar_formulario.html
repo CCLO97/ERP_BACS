@@ -168,9 +168,6 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary firma-btn" data-action="limpiar" data-campo="{{ campo.id }}">
                                     <i class="icon-refresh"></i> Limpiar Firma
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary firma-btn" data-action="guardar" data-campo="{{ campo.id }}">
-                                    <i class="icon-save"></i> Guardar Firma
-                                </button>
                             </div>
                             <input type="hidden" id="firma_{{ campo.id }}" name="campo_{{ campo.id }}">
                         </div>
@@ -499,82 +496,11 @@ function guardarFirma(campoId) {
     
     console.log(`DEBUG: Guardando firma para campo ${campoId}`);
     
-    // Verificar que el canvas no esté vacío - método más robusto
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
+    // Método simple como FirmasHTML
+    const dataURL = canvas.toDataURL('image/png');
     
-    let hasContent = false;
-    let pixelCount = 0;
-    
-    // Verificar píxeles con contenido (no transparentes y no blancos)
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const a = data[i + 3];
-        
-        // Si el pixel no es transparente y no es blanco puro
-        if (a > 0 && !(r === 255 && g === 255 && b === 255)) {
-            hasContent = true;
-            pixelCount++;
-        }
-    }
-    
-    console.log(`DEBUG: Canvas ${campoId} - Píxeles con contenido: ${pixelCount}`);
-    
-    if (!hasContent || pixelCount < 10) {
-        firmaInput.value = '';
-        console.log(`DEBUG: Canvas ${campoId} está vacío o tiene muy poco contenido`);
-        alert('Por favor dibuja tu firma antes de guardar');
-        return;
-    }
-    
-    try {
-        // Método robusto: crear canvas temporal para asegurar imagen completa
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        
-        // Copiar contenido del canvas original
-        tempCtx.drawImage(canvas, 0, 0);
-        
-        // Capturar con máxima calidad
-        const dataURL = tempCanvas.toDataURL('image/png', 1.0);
-        
-        // Validar que la imagen se capturó correctamente
-        if (!dataURL || dataURL.length < 100) {
-            throw new Error('DataURL muy corto');
-        }
-        
-        // Guardar la firma
-        firmaInput.value = dataURL;
-        console.log(`DEBUG: Firma ${campoId} guardada exitosamente, tamaño: ${dataURL.length} caracteres`);
-        
-        // Mostrar preview de la firma para debug
-        const preview = document.createElement('img');
-        preview.src = dataURL;
-        preview.style.cssText = 'max-width: 200px; max-height: 100px; border: 1px solid #ccc; margin: 5px;';
-        preview.title = 'Preview de la firma';
-        
-        // Insertar preview después del canvas
-        const canvasContainer = canvas.parentElement;
-        const existingPreview = canvasContainer.querySelector('.firma-preview');
-        if (existingPreview) {
-            existingPreview.remove();
-        }
-        preview.className = 'firma-preview';
-        canvasContainer.appendChild(preview);
-        
-        // Mostrar mensaje de éxito
-        alert('Firma guardada exitosamente');
-        
-    } catch (error) {
-        console.error(`DEBUG: Error guardando firma ${campoId}:`, error);
-        firmaInput.value = '';
-        alert(`Error al guardar la firma: ${error.message}. Por favor, intenta dibujar la firma nuevamente.`);
-    }
+    firmaInput.value = dataURL;
+    console.log(`DEBUG: Firma guardada exitosamente para campo ${campoId}`);
 }
 
 function inicializarPreviewsFotos() {
@@ -788,19 +714,57 @@ document.getElementById('formularioDiligenciar').addEventListener('submit', func
         return false;
     }
     
-    // Verificar firmas obligatorias
+    // Verificar firmas obligatorias - verificar si el canvas tiene contenido dibujado
     const firmasObligatorias = document.querySelectorAll('.firma-canvas');
-    firmasObligatorias.forEach(canvas => {
+    for (let canvas of firmasObligatorias) {
         const campoId = canvas.id.split('_')[1];
         const campoElement = document.querySelector(`[data-campo-id="${campoId}"]`);
         const esObligatorio = campoElement.querySelector('.form-label').textContent.includes('*');
         
-        if (esObligatorio && !document.getElementById(`firma_${campoId}`).value) {
-            e.preventDefault();
-            alert('Por favor completa todas las firmas obligatorias');
-            return false;
+        if (esObligatorio) {
+            // Verificar si el canvas tiene contenido dibujado (no está en blanco)
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            
+            // Verificar si hay píxeles no blancos (contenido dibujado)
+            let tieneContenido = false;
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                // Si el píxel no es blanco (255,255,255), tiene contenido
+                if (r !== 255 || g !== 255 || b !== 255) {
+                    tieneContenido = true;
+                    break;
+                }
+            }
+            
+            if (!tieneContenido) {
+                e.preventDefault();
+                alert('Por favor completa todas las firmas obligatorias');
+                return false;
+            }
+        }
+    }
+    
+    // PROCESAR TODAS LAS FIRMAS AUTOMÁTICAMENTE ANTES DEL ENVÍO
+    console.log('DEBUG: Procesando todas las firmas antes del envío...');
+    
+    // Buscar todos los canvas de firma y procesarlos
+    document.querySelectorAll('canvas[id^="canvas_"]').forEach(function(canvas) {
+        const campoId = canvas.id.replace('canvas_', '');
+        const firmaInput = document.getElementById(`firma_${campoId}`);
+        
+        if (firmaInput) {
+            console.log(`DEBUG: Procesando firma automática para campo ${campoId}`);
+            const dataURL = canvas.toDataURL('image/png');
+            firmaInput.value = dataURL;
+            console.log(`DEBUG: Firma automática guardada para campo ${campoId}`);
         }
     });
+    
+    console.log('DEBUG: Todas las firmas procesadas, enviando formulario...');
 });
 
 // Event listeners para botones de firma
@@ -813,11 +777,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (action === 'limpiar') {
                 limpiarFirma(campoId);
-            } else if (action === 'guardar') {
-                guardarFirma(campoId);
             }
         });
     });
+    
+    // El procesamiento de firmas ahora está integrado en el evento principal del formulario
     
     // Manejar botones de foto
     document.querySelectorAll('.foto-btn').forEach(function(btn) {
@@ -833,16 +797,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Asegurar que las firmas se guarden antes del submit para evitar condiciones de carrera
-    document.getElementById('formularioDiligenciar').addEventListener('submit', function(e) {
-        console.log('DEBUG: Formulario enviándose, guardando firmas...');
-        document.querySelectorAll('.firma-canvas').forEach(canvas => {
-            const id = canvas.id.split('_')[1];
-            console.log(`DEBUG: Guardando firma para campo ${id}`);
-            guardarFirma(id); // Asegura que el input esté actualizado
-        });
-        console.log('DEBUG: Todas las firmas guardadas antes del submit');
-    });
+    // El procesamiento de firmas ahora se hace automáticamente en el evento del formulario principal
 });
 </script>
 {% endblock %}

@@ -2486,7 +2486,45 @@ def diligenciar_formulario(id):
                     # Procesar firma con información del firmante
                     firma_data = request.form.get(f'campo_{campo.id}', '')
                     if firma_data:
-                        respuesta_campo.valor_archivo = firma_data
+                        try:
+                            # Guardar PNG EXACTAMENTE como en FirmasHTML y almacenar SOLO la ruta
+                            import base64
+                            from io import BytesIO
+                            from PIL import Image as PILImage
+
+                            # Separar prefijo data URL
+                            if ',' in firma_data:
+                                _, encoded = firma_data.split(',', 1)
+                            else:
+                                encoded = firma_data
+
+                            image_bytes = base64.b64decode(encoded)
+
+                            # Preparar carpetas: uploads/formularios/firmas
+                            formularios_root = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios')
+                            firmas_dir = os.path.join(formularios_root, 'firmas')
+                            os.makedirs(firmas_dir, exist_ok=True)
+
+                            # Nombre de archivo
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            png_filename = f'firma_{campo.id}_{respuesta_formulario.id}_{timestamp}.png'
+                            png_path = os.path.join(firmas_dir, png_filename)
+
+                            # Decodificar y guardar como PNG con fondo blanco
+                            img = PILImage.open(BytesIO(image_bytes)).convert('RGBA')
+                            bg = PILImage.new("RGB", img.size, (255, 255, 255))
+                            bg.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
+                            bg.save(png_path, format='PNG')
+
+                            print(f"DEBUG: Firma PNG guardada (POST) en: {png_path}")
+
+                            # Guardar SOLO la ruta relativa en la DB
+                            respuesta_campo.valor_archivo = os.path.join('formularios', 'firmas', png_filename)
+                        except Exception as e:
+                            print(f"ERROR: No se pudo guardar la firma PNG: {e}")
+                            # Como fallback guarda el base64 para no perder datos
+                            respuesta_campo.valor_archivo = firma_data
+
                         # Guardar información adicional del firmante
                         respuesta_campo.nombre_firmante = request.form.get(f'nombre_{campo.id}', '')
                         respuesta_campo.documento_firmante = request.form.get(f'documento_{campo.id}', '')
@@ -2508,9 +2546,14 @@ def diligenciar_formulario(id):
                             if not file_extension:
                                 file_extension = '.jpg'  # Default para imágenes sin extensión
                             
+                            # Crear estructura de carpetas organizada para fotos
+                            formulario_nombre = secure_filename("formularios")
+                            imagenes_dir = os.path.join(app.config['UPLOAD_FOLDER'], formulario_nombre, 'imagenes')
+                            os.makedirs(imagenes_dir, exist_ok=True)
+                            
                             # Crear nombre único: foto_campoID_respuestaID_timestamp.ext
                             unique_filename = f'foto_{campo.id}_{respuesta_formulario.id}_{timestamp}_{i+1}{file_extension}'
-                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                            filepath = os.path.join(imagenes_dir, unique_filename)
                             
                             print(f"DEBUG: Guardando como: {unique_filename}")
                             archivo.save(filepath)
@@ -2573,7 +2616,7 @@ def descargar_formulario_pdf(id):
         flash('No se encontró el archivo PDF', 'error')
         return redirect(url_for('formularios'))
     
-    # Buscar el archivo en la nueva estructura: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
+    # Buscar el archivo en la estructura: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
     formulario_nombre = secure_filename(respuesta_formulario.formulario.nombre)
     pdf_filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', formulario_nombre, respuesta_formulario.archivo_pdf)
     
@@ -2581,24 +2624,11 @@ def descargar_formulario_pdf(id):
         flash('El archivo PDF no existe', 'error')
         return redirect(url_for('formularios'))
     
-    # Detectar si es un dispositivo móvil
-    user_agent = request.headers.get('User-Agent', '').lower()
-    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'tablet'])
-    
-    if is_mobile:
-        # Para móviles, mostrar página de descarga con JavaScript
-        return render_template('descargar_pdf_mobile.html', 
-                             pdf_url=url_for('descargar_formulario_pdf_file', id=id),
-                             formulario_nombre=respuesta_formulario.formulario.nombre,
-                             fecha=respuesta_formulario.fecha_diligenciamiento.strftime('%d/%m/%Y %H:%M'))
-    else:
-        # Para PC, descarga directa
-        return send_file(
-            pdf_filepath,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=respuesta_formulario.archivo_pdf
-        )
+    # Mostrar página de descarga para todos los dispositivos (para poder redirigir)
+    return render_template('descargar_pdf_mobile.html', 
+                         pdf_url=url_for('descargar_formulario_pdf_file', id=id),
+                         formulario_nombre=respuesta_formulario.formulario.nombre,
+                         fecha=respuesta_formulario.fecha_diligenciamiento.strftime('%d/%m/%Y %H:%M'))
 
 @app.route('/formularios/<int:id>/pdf-file')
 @login_required
@@ -2613,12 +2643,15 @@ def descargar_formulario_pdf_file(id):
     if not respuesta_formulario.archivo_pdf:
         abort(404)
     
-    # Buscar el archivo en la nueva estructura: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
+    # Buscar el archivo en la estructura: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
     formulario_nombre = secure_filename(respuesta_formulario.formulario.nombre)
     pdf_filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', formulario_nombre, respuesta_formulario.archivo_pdf)
     
     if not os.path.exists(pdf_filepath):
         abort(404)
+    
+    # NO eliminar archivos de firma - mantener para inspección
+    print(f"DEBUG: Archivos de firma mantenidos en uploads/formularios/firmas/ para inspección")
     
     return send_file(
         pdf_filepath,
@@ -2952,7 +2985,10 @@ def generar_pdf_simple(respuesta_formulario):
                     contador_imagen = 1
                     for foto_filename in fotos_list:
                         foto_filename = foto_filename.strip()
-                        foto_path = os.path.join(app.config['UPLOAD_FOLDER'], foto_filename)
+                        # Buscar foto en la nueva ubicación organizada
+                        formulario_nombre = secure_filename("formularios")
+                        imagenes_dir = os.path.join(app.config['UPLOAD_FOLDER'], formulario_nombre, 'imagenes')
+                        foto_path = os.path.join(imagenes_dir, foto_filename)
                         
                         if os.path.exists(foto_path):
                             try:
@@ -2968,6 +3004,11 @@ def generar_pdf_simple(respuesta_formulario):
                                     else:
                                         new_width = img.width
                                         new_height = img.height
+                                    
+                                    # Buscar imagen en la nueva ubicación organizada
+                                    formulario_nombre = secure_filename("formularios")
+                                    imagenes_dir = os.path.join(app.config['UPLOAD_FOLDER'], formulario_nombre, 'imagenes')
+                                    original_path = os.path.join(imagenes_dir, foto_filename)
                                     
                                     # Guardar imagen temporalmente con máxima calidad y DPI original
                                     temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{foto_filename}')
@@ -3132,7 +3173,7 @@ def procesar_firma_con_metodos_alternativos(firma_bytes, temp_path):
 
 
 def generar_pdf_formulario(respuesta_formulario):
-    """Generar PDF del formulario diligenciado"""
+    """Generar PDF del formulario diligenciado - Formato simple como el ejemplo deseado"""
     try:
         print(f"DEBUG: Iniciando generación de PDF para formulario {respuesta_formulario.formulario.nombre}")
         buffer = io.BytesIO()
@@ -3292,8 +3333,10 @@ def generar_pdf_formulario(respuesta_formulario):
                         info_paragraph = Paragraph(info_firmante, value_style)
                         story.append(info_paragraph)
                         
-                        # Procesar imagen de la firma
-                        procesar_firma_simple(respuesta_campo.valor_archivo, campo, story, value_style)
+                        # Procesar imagen de la firma usando archivo si ya fue guardado en POST
+                        print(f"DEBUG: === LLAMANDO procesar_firma_png para campo {campo.id} ===")
+                        print(f"DEBUG: Valor archivo (firma): {respuesta_campo.valor_archivo[:80]}...")
+                        procesar_firma_png(respuesta_campo.valor_archivo, campo, story, value_style)
                         
                         valor = ""
                         
@@ -3319,7 +3362,10 @@ def generar_pdf_formulario(respuesta_formulario):
                     # Procesar fotos con redimensionamiento inteligente
                     for foto_filename in fotos_list:
                         foto_filename = foto_filename.strip()
-                        foto_path = os.path.join(app.config['UPLOAD_FOLDER'], foto_filename)
+                        # Buscar foto en la nueva ubicación organizada
+                        formulario_nombre = secure_filename("formularios")
+                        imagenes_dir = os.path.join(app.config['UPLOAD_FOLDER'], formulario_nombre, 'imagenes')
+                        foto_path = os.path.join(imagenes_dir, foto_filename)
                         
                         if os.path.exists(foto_path):
                             try:
@@ -3366,6 +3412,11 @@ def generar_pdf_formulario(respuesta_formulario):
                                     
                                     # NO redimensionar la imagen - mantener resolución original
                                     # Solo ajustar el tamaño de visualización en el PDF
+                                    
+                                    # Buscar imagen en la nueva ubicación organizada
+                                    formulario_nombre = secure_filename("formularios")
+                                    imagenes_dir = os.path.join(app.config['UPLOAD_FOLDER'], formulario_nombre, 'imagenes')
+                                    original_path = os.path.join(imagenes_dir, foto_filename)
                                     
                                     # Guardar imagen temporalmente con máxima calidad y DPI original
                                     temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{foto_filename}')
@@ -3433,8 +3484,8 @@ def generar_pdf_formulario(respuesta_formulario):
         # Limpiar archivos temporales después de generar el PDF
         try:
             import glob
-            # Patrones de archivos temporales que generamos
-            patterns = ['temp_*', 'firma_*', 'firma_respaldo_*']
+            # Patrones de archivos temporales que generamos (EXCEPTO firma_* que se limpia después)
+            patterns = ['temp_*', 'firma_respaldo_*']
             for pattern in patterns:
                 temp_files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], pattern))
                 for temp_file in temp_files:
@@ -3444,22 +3495,16 @@ def generar_pdf_formulario(respuesta_formulario):
         except Exception as cleanup_error:
             print(f"DEBUG: Error limpiando archivos temporales: {cleanup_error}")
         
+        # NO eliminar archivos de firma - mantener para inspección
+        print(f"DEBUG: Archivos de firma mantenidos en uploads/formularios/firmas/ para inspección")
+        
         return documento_nombre
         
     except Exception as e:
-        print(f"DEBUG: Error generando PDF del formulario: {e}")
+        print(f"Error generando PDF del formulario: {e}")
         import traceback
         traceback.print_exc()
         
-        # Limpiar archivos temporales incluso si hay error
-        try:
-            import glob
-            temp_files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], 'temp_*'))
-            for temp_file in temp_files:
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-        except:
-            pass
         
         return None
 
@@ -3894,6 +3939,92 @@ def procesar_firma_simple(firma_data, campo, story, value_style):
     finally:
         # NO eliminar el archivo temporal aquí - ReportLab aún lo necesita
         pass
+
+def procesar_firma_png(firma_data, campo, story, value_style):
+    """Procesar firma como imagen PNG - CÓDIGO EXACTO DE FirmasHTML"""
+    try:
+        image_bytes = b""
+        print(f"DEBUG: === INICIANDO procesar_firma_png para campo {campo.id} ===")
+        print(f"DEBUG: Datos de firma recibidos: {len(firma_data)} caracteres")
+        
+        import base64
+        from datetime import datetime
+        from PIL import Image as PILImage
+        from io import BytesIO
+        from reportlab.platypus import Image, Spacer, Paragraph
+        
+        # Si firma_data es una ruta (cuando la guardamos en POST), úsala directamente
+        posible_path = os.path.join(app.config['UPLOAD_FOLDER'], firma_data) if not os.path.isabs(firma_data) else firma_data
+        if os.path.exists(posible_path):
+            print(f"DEBUG: Usando archivo de firma existente: {posible_path}")
+            png_path = posible_path
+            img = PILImage.open(png_path)
+            bg = img.convert('RGB')
+        else:
+            # Separar el prefijo data:url si existe (EXACTO como FirmasHTML)
+            if ',' in firma_data:
+                _, encoded = firma_data.split(',', 1)
+            else:
+                encoded = firma_data
+
+            print(f"DEBUG: Base64 extraído, longitud: {len(encoded)}")
+
+            # Decodificar base64 (EXACTO como FirmasHTML - SIN LIMPIEZA)
+            try:
+                image_bytes = base64.b64decode(encoded)
+                print(f"DEBUG: Base64 decodificado exitosamente, tamaño: {len(image_bytes)} bytes")
+            except Exception as e:
+                print(f"ERROR: Base64 decode failed: {e}")
+                print(f"DEBUG: Base64 problemático: {encoded[:100]}...")
+                raise e
+
+            # Guardar temporalmente la imagen PNG (EXACTO como FirmasHTML)
+            img = PILImage.open(BytesIO(image_bytes)).convert('RGBA')
+            bg = PILImage.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
+
+            # Crear estructura de carpetas organizada
+            firmas_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', 'firmas')
+            os.makedirs(firmas_dir, exist_ok=True)
+            png_filename = f'firma_{campo.id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
+            png_path = os.path.join(firmas_dir, png_filename)
+            bg.save(png_path, format='PNG')
+            print(f"DEBUG: Imagen PNG guardada en: {png_path}")
+        
+        # En este punto tenemos bg (imagen PIL en RGB) y png_path (ruta del PNG)
+        
+        # Verificar archivo
+        if os.path.exists(png_path):
+            file_size = os.path.getsize(png_path)
+            print(f"DEBUG: ✅ Archivo PNG creado exitosamente - Tamaño: {file_size} bytes")
+        else:
+            print(f"DEBUG: ❌ ERROR: Archivo PNG NO se creó")
+            raise Exception("No se pudo crear el archivo PNG de la firma")
+        
+        # Escalar la firma (EXACTO como FirmasHTML)
+        img_w, img_h = bg.size
+        from reportlab.lib.pagesizes import A4
+        page_w, page_h = A4
+        max_width = min(page_w * 0.4, 300)
+        scale = max_width / img_w
+        draw_w = img_w * scale
+        draw_h = img_h * scale
+        
+        print(f"DEBUG: Imagen original: {img_w}x{img_h}, Escalada: {draw_w}x{draw_h}")
+        
+        # Crear imagen para PDF (EXACTO como FirmasHTML)
+        pdf_image = Image(png_path, width=draw_w, height=draw_h)
+        story.append(pdf_image)
+        story.append(Spacer(1, 10))
+        
+        print(f"DEBUG: ✅ Firma PNG agregada al PDF exitosamente")
+            
+    except Exception as e:
+        print(f"ERROR: Error en procesar_firma_png: {e}")
+        # En caso de error, agregar texto de error
+        error_text = f"<b>Firma Digital:</b> Error procesando imagen ({str(e)[:50]}...)"
+        error_paragraph = Paragraph(error_text, value_style)
+        story.append(error_paragraph)
 
 if __name__ == '__main__':
     init_db()

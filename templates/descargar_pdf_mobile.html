@@ -162,12 +162,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('Descarga iniciada exitosamente');
             
-            // Mostrar mensaje de éxito
+            // Mostrar mensaje de éxito y redirigir
             setTimeout(() => {
                 const successMsg = document.createElement('div');
                 successMsg.className = 'alert alert-success mt-3';
-                successMsg.innerHTML = '<i class="icon-check"></i> ¡PDF descargado exitosamente!';
+                successMsg.innerHTML = '<i class="icon-check"></i> ¡PDF descargado exitosamente! Redirigiendo...';
                 downloadBtn.parentNode.appendChild(successMsg);
+                
+                // Redirigir a formularios después de 2 segundos
+                setTimeout(function() {
+                    window.location.href = '/formularios';
+                }, 2000);
             }, 1000);
             
         } catch (error) {
