@@ -2748,13 +2748,42 @@ def generar_pdf_simple(respuesta_formulario):
         buffer = io.BytesIO()
         
         from reportlab.lib.pagesizes import A4
-        doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                              leftMargin=40, rightMargin=40,
-                              topMargin=40, bottomMargin=40)
+        # Márgenes APA Colombia (aprox.): 2.54 cm = 72 * 1 inch = ~72 puntos
+        apa_margin = 72  # 1 inch
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            leftMargin=apa_margin,
+            rightMargin=apa_margin,
+            topMargin=apa_margin,
+            bottomMargin=apa_margin,
+        )
         
         styles = getSampleStyleSheet()
         story = []
         
+        # Registrar Calibri si está disponible; fallback a Helvetica
+        try:
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            import os
+            calibri_paths = [
+                r"C:\\Windows\\Fonts\\calibri.ttf",
+                r"C:\\Windows\\Fonts\\Calibri.ttf",
+            ]
+            for p in calibri_paths:
+                if os.path.exists(p):
+                    pdfmetrics.registerFont(TTFont('Calibri', p))
+                    break
+            registered_fonts = set()
+            try:
+                registered_fonts = set(pdfmetrics.getRegisteredFontNames())
+            except Exception:
+                pass
+            use_calibri = 'Calibri' in registered_fonts
+        except Exception:
+            use_calibri = False
+
         # Estilos simples
         title_style = ParagraphStyle(
             'CustomTitle',
@@ -2769,10 +2798,10 @@ def generar_pdf_simple(respuesta_formulario):
         field_style = ParagraphStyle(
             'FieldStyle',
             parent=styles['Normal'],
-            fontSize=12,
+            fontSize=11,
             spaceAfter=10,
             spaceBefore=5,
-            fontName='Helvetica',
+            fontName=('Calibri' if use_calibri else 'Helvetica'),
             textColor=colors.HexColor('#2c3e50')
         )
         
@@ -2781,7 +2810,7 @@ def generar_pdf_simple(respuesta_formulario):
             parent=styles['Normal'],
             fontSize=11,
             spaceAfter=15,
-            fontName='Helvetica',
+            fontName=('Calibri' if use_calibri else 'Helvetica'),
             textColor=colors.HexColor('#34495e'),
             leftIndent=20
         )
@@ -3204,6 +3233,23 @@ def generar_pdf_formulario(respuesta_formulario):
         styles = getSampleStyleSheet()
         story = []
         
+        # Registrar Calibri si está disponible; de lo contrario, usar Helvetica
+        try:
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            import os
+            # Intentos comunes de ruta para Windows
+            calibri_paths = [
+                r"C:\\Windows\\Fonts\\calibri.ttf",
+                r"C:\\Windows\\Fonts\\Calibri.ttf",
+            ]
+            for p in calibri_paths:
+                if os.path.exists(p):
+                    pdfmetrics.registerFont(TTFont('Calibri', p))
+                    break
+        except Exception as font_err:
+            print(f"DEBUG: No se pudo registrar Calibri, usando Helvetica. Detalle: {font_err}")
+
         # Estilos personalizados
         title_style = ParagraphStyle(
             'CustomTitle',
@@ -3218,10 +3264,10 @@ def generar_pdf_formulario(respuesta_formulario):
         field_style = ParagraphStyle(
             'FieldStyle',
             parent=styles['Normal'],
-            fontSize=12,
+            fontSize=11,
             spaceAfter=10,
             spaceBefore=5,
-            fontName='Helvetica',
+            fontName='Calibri' if 'Calibri' in locals() or 'Calibri' in globals() else 'Helvetica',
             textColor=colors.HexColor('#2c3e50')
         )
         
@@ -3230,7 +3276,7 @@ def generar_pdf_formulario(respuesta_formulario):
             parent=styles['Normal'],
             fontSize=11,
             spaceAfter=15,
-            fontName='Helvetica',
+            fontName='Calibri' if 'Calibri' in locals() or 'Calibri' in globals() else 'Helvetica',
             textColor=colors.HexColor('#34495e'),
             leftIndent=20
         )

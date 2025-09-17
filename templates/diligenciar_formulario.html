@@ -298,6 +298,11 @@
     cursor: crosshair;
     display: block;
     margin-bottom: 10px;
+    /* Evitar desplazamiento de la página al dibujar y selección accidental */
+    touch-action: none;
+    -ms-touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .firma-controls {
@@ -443,23 +448,31 @@ function inicializarFirmas() {
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         
+        // Escala entre tamaño visual (CSS) y resolución interna del canvas
+        function getScale() {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return { rect, scaleX, scaleY };
+        }
+        
         let isDrawing = false;
         
         // Eventos del mouse
         canvas.addEventListener('mousedown', function(e) {
             isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const { rect, scaleX, scaleY } = getScale();
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
             ctx.beginPath();
             ctx.moveTo(x, y);
         });
         
         canvas.addEventListener('mousemove', function(e) {
             if (!isDrawing) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const { rect, scaleX, scaleY } = getScale();
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
             ctx.lineTo(x, y);
             ctx.stroke();
         });
@@ -473,10 +486,10 @@ function inicializarFirmas() {
         canvas.addEventListener('touchstart', function(e) {
             e.preventDefault();
             isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
+            const { rect, scaleX, scaleY } = getScale();
             const touch = e.touches[0];
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
             ctx.beginPath();
             ctx.moveTo(x, y);
         });
@@ -484,10 +497,10 @@ function inicializarFirmas() {
         canvas.addEventListener('touchmove', function(e) {
             e.preventDefault();
             if (!isDrawing) return;
-            const rect = canvas.getBoundingClientRect();
+            const { rect, scaleX, scaleY } = getScale();
             const touch = e.touches[0];
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
             ctx.lineTo(x, y);
             ctx.stroke();
         });
