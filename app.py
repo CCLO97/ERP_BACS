@@ -2884,8 +2884,6 @@ def generar_pdf_simple(respuesta_formulario):
             
             # Título del campo
             titulo_text = f"<b>{campo.titulo}</b>"
-            if campo.obligatorio:
-                titulo_text += " <i>(Obligatorio)</i>"
             
             story.append(Paragraph(titulo_text, field_style))
             
@@ -3358,8 +3356,7 @@ def generar_pdf_formulario(respuesta_formulario):
             
             # Título del campo
             titulo_text = f"<b>{campo.titulo}</b>"
-            if campo.obligatorio:
-                titulo_text += " <i>(Obligatorio)</i>"
+            # No mostrar etiqueta "(Obligatorio)" en el PDF
             
             titulo_paragraph = Paragraph(titulo_text, field_style)
             story.append(titulo_paragraph)
@@ -3481,13 +3478,8 @@ def generar_pdf_formulario(respuesta_formulario):
             elif campo.tipo_campo == 'foto':
                 if respuesta_campo.valor_archivo:
                     fotos_list = respuesta_campo.valor_archivo.split(',')
-                    valor = f"{len(fotos_list)} foto(s) adjunta(s)"
+                    valor = ""
                     
-                    # Agregar título "Registro Fotográfico" solo una vez
-                    story.append(Spacer(1, 15))
-                    titulo_fotos = Paragraph("<b>Registro Fotográfico</b>", field_style)
-                    story.append(titulo_fotos)
-                    story.append(Spacer(1, 10))
                     
                     # Procesar fotos con redimensionamiento inteligente
                     for foto_filename in fotos_list:
