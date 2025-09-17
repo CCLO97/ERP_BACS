@@ -16,6 +16,7 @@ import io
 
 from config import Config
 
+
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -2756,10 +2757,13 @@ def generar_pdf_simple(respuesta_formulario):
         header_data = []
         logo_cell = obtener_logo_pdf(max_width=80, max_height=40)
         
-        header_data.append([logo_cell, f'FORMULARIO: {respuesta_formulario.formulario.nombre}', 
-                           f'Fecha: {respuesta_formulario.fecha_diligenciamiento.strftime("%d/%m/%Y %H:%M")}'])
+        # Fecha de creación del formulario (estable)
+        from datetime import datetime
+        fecha_creacion = datetime.now().strftime("%d/%m/%Y")
         
-        header_table = Table(header_data, colWidths=[100, 200, 100])
+        header_data.append([logo_cell, respuesta_formulario.formulario.nombre, f'Fecha: {fecha_creacion}'])
+        
+        header_table = Table(header_data, colWidths=[100, 220, 80])
         header_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (0, 0), 'LEFT'),
             ('ALIGN', (1, 0), (1, 0), 'CENTER'),
@@ -3034,6 +3038,7 @@ def generar_pdf_simple(respuesta_formulario):
         traceback.print_exc()
         return None
 
+
 def procesar_firma_con_metodos_alternativos(firma_bytes, temp_path):
     """Intentar procesar firma con métodos alternativos para imágenes truncadas"""
     try:
@@ -3061,6 +3066,22 @@ def procesar_firma_con_metodos_alternativos(firma_bytes, temp_path):
                     img = PILImage.open(io.BytesIO(reconstructed))
                     img.save(temp_path, format='PNG', quality=100, optimize=False)
                     return img, temp_path
+                else:
+                    # Si no encuentra el marcador de fin, intentar truncar en un punto razonable
+                    print(f"DEBUG: No se encontró marcador de fin PNG, intentando truncar...")
+                    # Buscar el último chunk válido
+                    pos = 8  # Saltar header PNG
+                    while pos < len(firma_bytes) - 8:
+                        if pos + 8 > len(firma_bytes):
+                            break
+                        chunk_length = int.from_bytes(firma_bytes[pos:pos+4], 'big')
+                        chunk_type = firma_bytes[pos+4:pos+8]
+                        if chunk_type == b'IEND':
+                            reconstructed = firma_bytes[:pos+8+4]  # Incluir CRC
+                            img = PILImage.open(io.BytesIO(reconstructed))
+                            img.save(temp_path, format='PNG', quality=100, optimize=False)
+                            return img, temp_path
+                        pos += 8 + chunk_length + 4  # Saltar al siguiente chunk
             
             # Si no es PNG, intentar con JPEG
             elif firma_bytes.startswith(b'\xff\xd8\xff'):
@@ -3109,177 +3130,6 @@ def procesar_firma_con_metodos_alternativos(firma_bytes, temp_path):
             print(f"DEBUG: Método placeholder falló: {e3}")
             raise e3
 
-def procesar_firma_para_pdf(respuesta_campo, campo, story, value_style):
-    """Procesar firma y agregar al PDF con manejo robusto de errores"""
-    try:
-        import base64
-        print(f"DEBUG: Procesando firma para campo {campo.id}")
-        
-        if not respuesta_campo.valor_archivo:
-            return "Sin firma"
-        
-        print(f"DEBUG: Valor archivo length: {len(respuesta_campo.valor_archivo)}")
-        
-        # Verificar si la firma tiene el formato data:image/png;base64,
-        if respuesta_campo.valor_archivo.startswith('data:image'):
-            firma_data = respuesta_campo.valor_archivo.split(',')[1]
-            print(f"DEBUG: Firma en formato data:image detectada")
-        else:
-            firma_data = respuesta_campo.valor_archivo
-            print(f"DEBUG: Firma en formato base64 directo")
-        
-        # Limpiar el string base64
-        firma_data = firma_data.strip()
-        
-        # Validar que no esté vacío
-        if not firma_data:
-            raise ValueError("Datos de firma vacíos")
-        
-        # Agregar padding si es necesario
-        missing_padding = len(firma_data) % 4
-        if missing_padding:
-            firma_data += '=' * (4 - missing_padding)
-        
-        print(f"DEBUG: Intentando decodificar base64...")
-        
-        # Intentar decodificar base64 con manejo de errores
-        try:
-            firma_bytes = base64.b64decode(firma_data, validate=True)
-            print(f"DEBUG: Base64 decodificado exitosamente, tamaño: {len(firma_bytes)} bytes")
-        except Exception as decode_error:
-            print(f"ERROR: Error decodificando base64: {decode_error}")
-            # Intentar decodificar sin validación como fallback
-            try:
-                firma_bytes = base64.b64decode(firma_data, validate=False)
-                print(f"DEBUG: Base64 decodificado sin validación, tamaño: {len(firma_bytes)} bytes")
-            except Exception as fallback_error:
-                raise ValueError(f"Base64 inválido: {fallback_error}")
-        
-        if len(firma_bytes) == 0:
-            raise ValueError("Archivo de firma vacío")
-        
-        # Validar headers de imagen
-        if not (firma_bytes.startswith(b'\x89PNG') or firma_bytes.startswith(b'\xff\xd8\xff')):
-            print(f"WARNING: El archivo no parece ser PNG o JPEG válido")
-            print(f"DEBUG: Primeros bytes: {firma_bytes[:10].hex()}")
-            # Intentar procesar de todas formas
-        
-        # Crear imagen temporal
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_firma_{campo.id}.png')
-        
-        # Intentar procesar la imagen con múltiples métodos
-        img = None
-        try:
-            # Método 1: Abrir directamente desde bytes
-            print(f"DEBUG: Intentando abrir imagen desde bytes...")
-            img = PILImage.open(io.BytesIO(firma_bytes))
-            print(f"DEBUG: Imagen abierta exitosamente - Dimensiones: {img.width}x{img.height}")
-            
-        except PILImage.UnidentifiedImageError as img_error:
-            print(f"ERROR: Imagen no identificada: {img_error}")
-            # Método 2: Intentar guardar primero y luego abrir
-            try:
-                print(f"DEBUG: Intentando método alternativo - guardar y reabrir...")
-                with open(temp_path, 'wb') as f:
-                    f.write(firma_bytes)
-                
-                # Intentar abrir desde archivo
-                img = PILImage.open(temp_path)
-                print(f"DEBUG: Imagen abierta desde archivo - Dimensiones: {img.width}x{img.height}")
-                
-            except Exception as fallback_error:
-                print(f"ERROR: Método alternativo falló: {fallback_error}")
-                # Método 3: Usar métodos alternativos para imágenes truncadas
-                try:
-                    print(f"DEBUG: Intentando métodos alternativos para imagen truncada...")
-                    img, temp_path = procesar_firma_con_metodos_alternativos(firma_bytes, temp_path)
-                    print(f"DEBUG: Imagen procesada con métodos alternativos - Dimensiones: {img.width}x{img.height}")
-                except Exception as alt_error:
-                    print(f"ERROR: Métodos alternativos fallaron: {alt_error}")
-                    raise ValueError(f"Imagen corrupta o no válida: {alt_error}")
-        
-        except Exception as general_error:
-            print(f"ERROR: Error general procesando imagen: {general_error}")
-            raise ValueError(f"Error procesando imagen: {general_error}")
-        
-        # Verificar dimensiones válidas
-        if img.width == 0 or img.height == 0:
-            raise ValueError("Imagen con dimensiones inválidas")
-        
-        # Convertir a RGB si es necesario
-        if img.mode in ('RGBA', 'LA', 'P'):
-            print(f"DEBUG: Convirtiendo imagen de {img.mode} a RGB")
-            img = img.convert('RGB')
-        
-        # Calcular dimensiones para visualización
-        max_width = 300
-        max_height = 150
-        
-        if img.width > max_width or img.height > max_height:
-            ratio = min(max_width/img.width, max_height/img.height)
-            new_width = int(img.width * ratio)
-            new_height = int(img.height * ratio)
-        else:
-            new_width = img.width
-            new_height = img.height
-        
-        # Guardar imagen temporalmente con configuración robusta
-        try:
-            # Configurar para manejar imágenes truncadas
-            img.save(temp_path, format='PNG', quality=100, optimize=False)
-            print(f"DEBUG: Imagen de firma guardada exitosamente en {temp_path}")
-        except Exception as save_error:
-            print(f"ERROR: Error guardando imagen: {save_error}")
-            # Intentar con formato JPEG como fallback
-            try:
-                temp_path_jpg = temp_path.replace('.png', '.jpg')
-                img.save(temp_path_jpg, format='JPEG', quality=95, optimize=False)
-                temp_path = temp_path_jpg
-                print(f"DEBUG: Imagen guardada como JPEG: {temp_path}")
-            except Exception as jpeg_error:
-                print(f"ERROR: Error guardando como JPEG: {jpeg_error}")
-                raise ValueError(f"No se pudo guardar la imagen: {jpeg_error}")
-        
-        # Agregar espacio antes de la imagen
-        story.append(Spacer(1, 10))
-        
-        # Crear leyenda
-        caption_text = f"Firma Digital - {campo.titulo}"
-        caption = Paragraph(caption_text, value_style)
-        story.append(caption)
-        
-        # Agregar imagen centrada con borde
-        try:
-            pdf_image = Image(temp_path, width=new_width, height=new_height)
-            
-            # Crear tabla para centrar la imagen con borde
-            image_table = Table([[pdf_image]], colWidths=[new_width])
-            image_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
-                ('BOX', (0, 0), (0, 0), 1, colors.HexColor('#bdc3c7')),
-                ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
-            ]))
-            
-            story.append(image_table)
-            print(f"DEBUG: Firma agregada exitosamente al PDF")
-            
-        except Exception as pdf_error:
-            print(f"ERROR: Error agregando imagen al PDF: {pdf_error}")
-            # Agregar mensaje de error en lugar de la imagen
-            error_text = f"<b>Firma Digital:</b> Imagen procesada pero no se pudo incluir en el PDF"
-            error_paragraph = Paragraph(error_text, value_style)
-            story.append(error_paragraph)
-        
-        return "Firma digital procesada"
-        
-    except Exception as e:
-        print(f"ERROR: Error procesando firma {campo.id}: {e}")
-        # Agregar información de debug
-        error_text = f"<b>Firma Digital:</b> Error procesando imagen ({str(e)[:50]}...)"
-        error_paragraph = Paragraph(error_text, value_style)
-        story.append(error_paragraph)
-        return "Error en firma"
 
 def generar_pdf_formulario(respuesta_formulario):
     """Generar PDF del formulario diligenciado"""
@@ -3326,18 +3176,23 @@ def generar_pdf_formulario(respuesta_formulario):
             leftIndent=20
         )
         
-        # Encabezado
+        # ========================================
+        # ENCABEZADO DEL PDF - NO TOCAR ESTA SECCIÓN
+        # ========================================
         header_data = []
         logo_cell = obtener_logo_pdf(max_width=80, max_height=40)
         
-        header_data.append([logo_cell, f'FORMULARIO: {respuesta_formulario.formulario.nombre}', 
-                           f'Fecha: {respuesta_formulario.fecha_diligenciamiento.strftime("%d/%m/%Y %H:%M")}'])
+        # Fecha de creación del formulario (estable)
+        from datetime import datetime
+        fecha_creacion = datetime.now().strftime("%d/%m/%Y")
         
-        header_table = Table(header_data, colWidths=[100, 200, 100])
+        header_data.append([logo_cell, respuesta_formulario.formulario.nombre, f'Fecha: {fecha_creacion}'])
+        
+        header_table = Table(header_data, colWidths=[100, 220, 80])
         header_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),      # Logo a la izquierda
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),    # Título centrado
+            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),     # Fecha a la derecha
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('FONTSIZE', (1, 0), (1, 0), 16),
             ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),
@@ -3345,6 +3200,9 @@ def generar_pdf_formulario(respuesta_formulario):
             ('FONTNAME', (2, 0), (2, 0), 'Helvetica'),
             ('LINEBELOW', (0, 0), (-1, -1), 2, colors.black),
         ]))
+        # ========================================
+        # FIN ENCABEZADO - NO MODIFICAR
+        # ========================================
         
         story.append(header_table)
         story.append(Spacer(1, 20))
@@ -3420,9 +3278,31 @@ def generar_pdf_formulario(respuesta_formulario):
                 
                 valor = "<br/>".join(info_firmante) if info_firmante else "Firma digital"
                 
-                # Procesar imagen de la firma usando la función auxiliar
+                # Procesar imagen de la firma
                 if respuesta_campo.valor_archivo:
-                    procesar_firma_para_pdf(respuesta_campo, campo, story, value_style)
+                    try:
+                        # Agregar información del firmante
+                        info_firmante = f"""
+                        <b>Nombre:</b> {respuesta_campo.nombre_firmante or 'No especificado'}<br/>
+                        <b>Documento:</b> {respuesta_campo.documento_firmante or 'No especificado'}<br/>
+                        <b>Empresa:</b> {respuesta_campo.empresa_firmante or 'No especificado'}<br/>
+                        <b>Cargo:</b> {respuesta_campo.cargo_firmante or 'No especificado'}
+                        """
+                        
+                        info_paragraph = Paragraph(info_firmante, value_style)
+                        story.append(info_paragraph)
+                        
+                        # Procesar imagen de la firma
+                        procesar_firma_simple(respuesta_campo.valor_archivo, campo, story, value_style)
+                        
+                        valor = ""
+                        
+                    except Exception as firma_error:
+                        print(f"ERROR: Error procesando firma: {firma_error}")
+                        error_text = f"<b>Firma Digital:</b> Error procesando imagen ({str(firma_error)[:50]}...)"
+                        error_paragraph = Paragraph(error_text, value_style)
+                        story.append(error_paragraph)
+                        valor = "Error en firma"
                 else:
                     valor = "Sin firma"
             elif campo.tipo_campo == 'foto':
@@ -3512,7 +3392,7 @@ def generar_pdf_formulario(respuesta_formulario):
                                 print(f"Error procesando imagen {foto_filename}: {e}")
                                 continue
                 else:
-                    valor = "Sin fotos"
+                    valor = ""
             
             valor_paragraph = Paragraph(valor, value_style)
             story.append(valor_paragraph)
@@ -3553,11 +3433,14 @@ def generar_pdf_formulario(respuesta_formulario):
         # Limpiar archivos temporales después de generar el PDF
         try:
             import glob
-            temp_files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], 'temp_*'))
-            for temp_file in temp_files:
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-                    print(f"DEBUG: Archivo temporal eliminado: {temp_file}")
+            # Patrones de archivos temporales que generamos
+            patterns = ['temp_*', 'firma_*', 'firma_respaldo_*']
+            for pattern in patterns:
+                temp_files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], pattern))
+                for temp_file in temp_files:
+                    if os.path.exists(temp_file):
+                        os.remove(temp_file)
+                        print(f"DEBUG: Archivo temporal eliminado: {temp_file}")
         except Exception as cleanup_error:
             print(f"DEBUG: Error limpiando archivos temporales: {cleanup_error}")
         
@@ -3579,6 +3462,438 @@ def generar_pdf_formulario(respuesta_formulario):
             pass
         
         return None
+
+def procesar_firma_imagen(firma_data, campo, story, value_style):
+    """Procesar firma como imagen y agregarla al PDF - Solución simple y robusta"""
+    temp_path = None
+    try:
+        import base64
+        import datetime
+        import io
+        from PIL import Image as PILImage
+        from reportlab.platypus import Image
+        from reportlab.lib.utils import ImageReader
+        
+        print(f"DEBUG: Procesando imagen de firma para campo {campo.id}")
+        print(f"DEBUG: Longitud de datos base64: {len(firma_data)}")
+        
+        # Configurar PIL para manejar imágenes truncadas
+        from PIL import ImageFile
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        
+        # Extraer datos base64
+        if ',' in firma_data:
+            base64_data = firma_data.split(',')[1]
+            print(f"DEBUG: Datos base64 extraídos, longitud: {len(base64_data)}")
+        else:
+            base64_data = firma_data
+            print(f"DEBUG: Usando datos base64 directos")
+        
+        # Limpiar y agregar padding si es necesario
+        base64_data = base64_data.strip()
+        missing_padding = len(base64_data) % 4
+        if missing_padding:
+            base64_data += '=' * (4 - missing_padding)
+            print(f"DEBUG: Padding agregado, nueva longitud: {len(base64_data)}")
+        
+        # Decodificar base64
+        try:
+            firma_bytes = base64.b64decode(base64_data, validate=True)
+            print(f"DEBUG: Base64 decodificado exitosamente, tamaño: {len(firma_bytes)} bytes")
+        except Exception as e:
+            print(f"DEBUG: Error en decodificación con validación: {e}")
+            firma_bytes = base64.b64decode(base64_data, validate=False)
+            print(f"DEBUG: Base64 decodificado sin validación, tamaño: {len(firma_bytes)} bytes")
+        
+        # Crear archivo temporal único
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        temp_filename = f'temp_firma_{campo.id}_{timestamp}.png'
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+        
+        # Guardar imagen temporal
+        with open(temp_path, 'wb') as f:
+            f.write(firma_bytes)
+        
+        # Verificar que el archivo se creó
+        if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+            raise ValueError("No se pudo crear el archivo temporal")
+        
+        print(f"DEBUG: Archivo temporal creado: {temp_path}, tamaño: {os.path.getsize(temp_path)} bytes")
+        
+        # PROCESAMIENTO SIMPLE Y ROBUSTO
+        try:
+            img = PILImage.open(temp_path)
+            print(f"DEBUG: Imagen original - Modo: {img.mode}, Dimensiones: {img.width}x{img.height}")
+            
+            # Convertir a RGB si es necesario
+            if img.mode == 'RGBA':
+                print(f"DEBUG: Convirtiendo RGBA a RGB con fondo blanco")
+                background = PILImage.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            elif img.mode != 'RGB':
+                print(f"DEBUG: Convirtiendo de {img.mode} a RGB")
+                img = img.convert('RGB')
+            
+            # PROCESAMIENTO INTELIGENTE: Detectar automáticamente el mejor método
+            print(f"DEBUG: Analizando imagen para determinar el mejor procesamiento")
+            
+            # Convertir a escala de grises para análisis
+            gray_img = img.convert('L')
+            
+            # Analizar el histograma para entender la imagen
+            histogram = gray_img.histogram()
+            total_pixels = sum(histogram)
+            
+            # Contar píxeles oscuros (0-50) y claros (200-255)
+            dark_pixels = sum(histogram[0:51])
+            light_pixels = sum(histogram[200:256])
+            
+            dark_percentage = (dark_pixels / total_pixels) * 100
+            light_percentage = (light_pixels / total_pixels) * 100
+            
+            print(f"DEBUG: Análisis - Oscuros: {dark_percentage:.1f}%, Claros: {light_percentage:.1f}%")
+            
+            # Decidir el mejor método basado en el análisis
+            if dark_percentage > 5:  # Hay suficiente contenido oscuro (firma negra)
+                print(f"DEBUG: Firma negra detectada, usando imagen original")
+                img_resized = img  # Usar imagen original
+            elif light_percentage > 80:  # Imagen muy clara (firma blanca/gris)
+                print(f"DEBUG: Firma clara detectada, invirtiendo colores")
+                img_resized = PILImage.eval(img, lambda x: 255 - x)  # Invertir
+            else:  # Caso intermedio
+                print(f"DEBUG: Caso intermedio, aplicando contraste")
+                # Aumentar contraste
+                from PIL import ImageEnhance
+                enhancer = ImageEnhance.Contrast(img)
+                img_resized = enhancer.enhance(2.0)
+            
+            # Dimensiones para ReportLab
+            target_width = img_resized.width
+            target_height = img_resized.height
+            
+            # Guardar imagen procesada
+            img_resized.save(temp_path, format='PNG', quality=100, optimize=False)
+            print(f"DEBUG: Imagen procesada guardada - Dimensiones: {target_width}x{target_height}")
+            
+            # Verificar que el archivo se guardó correctamente
+            if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+                raise ValueError("No se pudo guardar la imagen procesada")
+            
+            print(f"DEBUG: Archivo guardado verificado - Tamaño: {os.path.getsize(temp_path)} bytes")
+            
+            # Agregar al PDF
+            story.append(Spacer(1, 10))
+            
+            # Agregar leyenda para la firma
+            firma_leyenda = Paragraph("<b>Firma Digital:</b>", value_style)
+            story.append(firma_leyenda)
+            story.append(Spacer(1, 5))
+            
+            # Usar dimensiones fijas para mejor compatibilidad con ReportLab
+            display_width = target_width
+            display_height = target_height
+            
+            # Crear imagen para ReportLab de manera directa
+            try:
+                # Verificar que el archivo existe y tiene contenido
+                if not os.path.exists(temp_path):
+                    raise ValueError("Archivo temporal no existe")
+                
+                file_size = os.path.getsize(temp_path)
+                if file_size == 0:
+                    raise ValueError("Archivo temporal está vacío")
+                
+                print(f"DEBUG: Archivo verificado - Tamaño: {file_size} bytes")
+                
+                # Crear imagen para ReportLab usando dimensiones originales
+                # Limitar el tamaño máximo para que quepa en el PDF
+                max_width = 500
+                max_height = 300
+                
+                if target_width > max_width or target_height > max_height:
+                    # Calcular proporción para mantener aspecto
+                    ratio = min(max_width/target_width, max_height/target_height)
+                    display_width = int(target_width * ratio)
+                    display_height = int(target_height * ratio)
+                    print(f"DEBUG: Redimensionando para PDF: {display_width}x{display_height}")
+                else:
+                    display_width = target_width
+                    display_height = target_height
+                    print(f"DEBUG: Usando dimensiones originales para PDF: {display_width}x{display_height}")
+                
+                pdf_image = Image(temp_path, width=display_width, height=display_height)
+                print(f"DEBUG: Imagen ReportLab creada - {display_width}x{display_height}")
+                
+                # Agregar imagen con borde para mejor visibilidad
+                story.append(Spacer(1, 5))
+                
+                # Crear tabla para centrar la imagen con borde
+                image_table = Table([[pdf_image]], colWidths=[display_width])
+                image_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                    ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                    ('BOX', (0, 0), (0, 0), 2, colors.HexColor('#2c3e50')),
+                    ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#ffffff')),
+                    ('PADDING', (0, 0), (0, 0), 10),
+                ]))
+                
+                story.append(image_table)
+                print(f"DEBUG: Imagen agregada al PDF con borde exitosamente")
+                
+            except Exception as rl_error:
+                print(f"ERROR: Error creando imagen ReportLab: {rl_error}")
+                import traceback
+                traceback.print_exc()
+                
+                # Método de respaldo: crear imagen simple más grande
+                try:
+                    print(f"DEBUG: Creando imagen de respaldo")
+                    simple_img = PILImage.new('RGB', (400, 200), (255, 255, 255))
+                    from PIL import ImageDraw
+                    draw = ImageDraw.Draw(simple_img)
+                    
+                    # Dibujar un rectángulo más grande
+                    draw.rectangle([20, 20, 380, 180], outline=(0, 0, 0), width=3)
+                    
+                    # Agregar texto más grande
+                    draw.text((50, 50), "FIRMA DIGITAL", fill=(0, 0, 0))
+                    draw.text((50, 80), "Procesamiento de respaldo", fill=(100, 100, 100))
+                    
+                    simple_path = os.path.join(app.config['UPLOAD_FOLDER'], f'simple_firma_{campo.id}.png')
+                    simple_img.save(simple_path, format='PNG')
+                    
+                    # Crear imagen con borde
+                    pdf_image = Image(simple_path, width=400, height=200)
+                    image_table = Table([[pdf_image]], colWidths=[400])
+                    image_table.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                        ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                        ('BOX', (0, 0), (0, 0), 2, colors.HexColor('#2c3e50')),
+                        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#ffffff')),
+                        ('PADDING', (0, 0), (0, 0), 10),
+                    ]))
+                    
+                    story.append(image_table)
+                    print(f"DEBUG: Imagen de respaldo agregada")
+                    
+                except Exception as backup_error:
+                    print(f"ERROR: Error con imagen de respaldo: {backup_error}")
+                    # Último recurso: texto
+                    error_text = f"<b>Firma Digital:</b> Error procesando imagen"
+                    error_paragraph = Paragraph(error_text, value_style)
+                    story.append(error_paragraph)
+            
+        except Exception as img_error:
+            print(f"ERROR: Error procesando imagen: {img_error}")
+            import traceback
+            traceback.print_exc()
+            # Agregar mensaje de error
+            error_text = f"<b>Firma Digital:</b> Error procesando imagen"
+            error_paragraph = Paragraph(error_text, value_style)
+            story.append(error_paragraph)
+        
+    except Exception as e:
+        print(f"ERROR: Error general procesando firma: {e}")
+        import traceback
+        traceback.print_exc()
+        # Agregar mensaje de error
+        error_text = f"<b>Firma Digital:</b> Error procesando firma"
+        error_paragraph = Paragraph(error_text, value_style)
+        story.append(error_paragraph)
+    
+    finally:
+        # NO eliminar el archivo temporal aquí - ReportLab aún lo necesita
+        # El archivo se eliminará automáticamente por la limpieza general al final
+        pass
+
+
+def clean_base64(b64_str):
+    """Limpia la cadena Base64 removiendo prefijos y padding incorrecto."""
+    import re
+    
+    # 1. Quitar prefijo
+    if ',' in b64_str:
+        header, data = b64_str.split(',', 1)
+        print(f"DEBUG: Prefijo removido: {header}")
+    else:
+        data = b64_str
+    
+    # 2. Remover caracteres que no son válidos
+    # Sólo dejar A-Z a-z, 0-9, +, /, = (si estás usando base64 estándar)
+    data = re.sub(r'[^A-Za-z0-9+/=]', '', data)
+    
+    # 3. Corregir padding si falta
+    missing_padding = len(data) % 4
+    if missing_padding != 0:
+        data += '=' * (4 - missing_padding)
+        print(f"DEBUG: Padding agregado: {4 - missing_padding} caracteres")
+    
+    print(f"DEBUG: Base64 limpio - Longitud: {len(data)}")
+    return data
+
+def procesar_firma_simple(firma_data, campo, story, value_style):
+    """Procesar firma de manera simple y robusta - SOLO CAMBIO: umbral más permisivo"""
+    temp_path = None
+    try:
+        import base64
+        import datetime
+        import io
+        import re
+        from PIL import Image as PILImage
+        from PIL import ImageFile
+        from reportlab.platypus import Image
+        from reportlab.lib.utils import ImageReader
+        
+        # Configurar PIL para manejar imágenes truncadas
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        
+        print(f"DEBUG: Procesando firma simple para campo {campo.id}")
+        print(f"DEBUG: Longitud datos recibidos: {len(firma_data)}")
+        print(f"DEBUG: Primeros 100 caracteres: {firma_data[:100]}")
+        
+        # Verificar que la cadena no esté vacía
+        if not firma_data or len(firma_data) < 30:
+            raise ValueError("Firma base64 demasiado corta o vacía")
+        
+        # Crear archivo temporal único
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        temp_filename = f"firma_simple_{campo.id}_{timestamp}.png"
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+        
+        # Limpiar y decodificar base64
+        try:
+            # Limpiar la cadena base64
+            cleaned_base64 = clean_base64(firma_data)
+            
+            # Decodificar base64
+            image_data = base64.b64decode(cleaned_base64)
+            print(f"DEBUG: Base64 decodificado - Tamaño: {len(image_data)} bytes")
+            
+        except Exception as decode_error:
+            print(f"ERROR: Error decodificando base64: {decode_error}")
+            raise ValueError(f"Error decodificando base64: {decode_error}")
+        
+        # Procesar imagen con PIL
+        try:
+            # Abrir imagen
+            image = PILImage.open(io.BytesIO(image_data))
+            print(f"DEBUG: Imagen PIL abierta - Modo: {image.mode}, Dimensiones: {image.width}x{image.height}")
+            
+            # Convertir a RGB si es necesario
+            if image.mode in ('RGBA', 'LA'):
+                print(f"DEBUG: Convirtiendo {image.mode} a RGB con fondo blanco")
+                fondo = PILImage.new('RGB', image.size, (255, 255, 255))
+                alpha = image.split()[-1]
+                fondo.paste(image, mask=alpha)
+                image = fondo
+            else:
+                image = image.convert('RGB')
+            
+            # Verificar que la imagen tiene contenido (no solo fondo blanco)
+            # Convertir a escala de grises para análisis
+            gray_img = image.convert('L')
+            histogram = gray_img.histogram()
+            
+            # Contar píxeles no blancos (valor < 250) - MÁS PERMISIVO
+            non_white_pixels = sum(histogram[:250])
+            total_pixels = sum(histogram)
+            non_white_percentage = (non_white_pixels / total_pixels) * 100
+            
+            print(f"DEBUG: Análisis imagen - Píxeles no blancos: {non_white_percentage:.1f}%")
+            
+            # CAMBIO ÚNICO: Ser más permisivo - solo considerar vacía si tiene menos del 0.1% de contenido
+            if non_white_percentage < 0.1:  # Cambiado de 1.0% a 0.1%
+                print(f"DEBUG: Imagen parece estar vacía, creando imagen de respaldo")
+                # Crear imagen de respaldo
+                image = PILImage.new('RGB', (400, 200), (255, 255, 255))
+                from PIL import ImageDraw, ImageFont
+                
+                try:
+                    draw = ImageDraw.Draw(image)
+                    # Dibujar un rectángulo simple
+                    draw.rectangle([50, 50, 350, 150], outline=(0, 0, 0), width=2)
+                    
+                    # Agregar texto
+                    try:
+                        font = ImageFont.load_default()
+                        text = "FIRMA DIGITAL"
+                        bbox = draw.textbbox((0, 0), text, font=font)
+                        text_width = bbox[2] - bbox[0]
+                        text_height = bbox[3] - bbox[1]
+                        x = (400 - text_width) // 2
+                        y = (200 - text_height) // 2
+                        draw.text((x, y), text, fill=(0, 0, 0), font=font)
+                    except:
+                        pass
+                except Exception as draw_error:
+                    print(f"DEBUG: Error creando imagen de respaldo: {draw_error}")
+            else:
+                print(f"DEBUG: Imagen tiene contenido válido, procediendo con la imagen original")
+            
+            # Guardar imagen procesada
+            image.save(temp_path, format='PNG', quality=100)
+            print(f"DEBUG: Imagen guardada - Dimensiones: {image.width}x{image.height}")
+            
+        except Exception as pil_error:
+            print(f"ERROR: Error procesando imagen con PIL: {pil_error}")
+            raise ValueError(f"Error procesando imagen: {pil_error}")
+        
+        # Crear imagen para ReportLab
+        try:
+            # Usar directamente la ruta del archivo
+            pdf_image = Image(temp_path, width=300, height=150)
+            print(f"DEBUG: Imagen ReportLab creada exitosamente")
+            
+        except Exception as e:
+            print(f"ERROR: Error creando imagen ReportLab: {e}")
+            raise ValueError("No se pudo crear imagen para PDF")
+        
+        # Agregar imagen al PDF
+        try:
+            # Crear tabla para la firma
+            firma_data_table = Table([
+                ['Firma Digital:', pdf_image]
+            ], colWidths=[120, 300])
+            
+            # Estilo para la tabla de firma
+            firma_style = TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (0, 0), 10),
+                ('TEXTCOLOR', (0, 0), (0, 0), '#2c3e50'),
+                ('BACKGROUND', (0, 0), (-1, -1), '#ffffff'),
+                ('GRID', (0, 0), (-1, -1), 1, '#2c3e50'),
+                ('PADDING', (0, 0), (-1, -1), 8),
+            ])
+            
+            firma_data_table.setStyle(firma_style)
+            story.append(firma_data_table)
+            story.append(Spacer(1, 12))
+            
+            print(f"DEBUG: Firma agregada al PDF exitosamente")
+            
+        except Exception as e:
+            print(f"ERROR: Error agregando firma al PDF: {e}")
+            # Agregar texto de error como respaldo
+            error_text = f"Error procesando imagen de firma: {e}"
+            story.append(Paragraph(f"<b>Firma Digital:</b> {error_text}", value_style))
+            story.append(Spacer(1, 12))
+        
+        return temp_path
+        
+    except Exception as e:
+        print(f"ERROR: Error general procesando firma: {e}")
+        # Agregar texto de error como respaldo
+        error_text = f"Error procesando imagen de firma: {e}"
+        story.append(Paragraph(f"<b>Firma Digital:</b> {error_text}", value_style))
+        story.append(Spacer(1, 12))
+        return None
+    finally:
+        # NO eliminar el archivo temporal aquí - ReportLab aún lo necesita
+        pass
 
 if __name__ == '__main__':
     init_db()

@@ -18,5 +18,11 @@ reportlab==4.0.4
 # Procesamiento de imágenes
 Pillow==11.3.0
 
+# Procesamiento avanzado de imágenes (para firmas robustas)
+opencv-python>=4.5.0
+numpy>=1.21.0
+scipy>=1.7.0
+scikit-image>=0.18.0
+
 # Seguridad
 bcrypt==4.0.1
