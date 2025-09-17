@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Formularios - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Gestión de Formularios</h1>
+        <p>Administra las plantillas de formularios del sistema</p>
+    </div>
+
+    <div class="actions-bar">
+        <a href="{{ url_for('nuevo_formulario') }}" class="btn btn-primary">
+            <i class="icon-plus"></i> Nuevo Formulario
+        </a>
+    </div>
+
+    {% if formularios %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Campos</th>
+                    <th>Respuestas</th>
+                    <th>Fecha Creación</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for formulario in formularios %}
+                <tr>
+                    <td>
+                        <strong>{{ formulario.nombre }}</strong>
+                    </td>
+                    <td>
+                        {% if formulario.descripcion %}
+                            {{ formulario.descripcion[:100] }}{% if formulario.descripcion|length > 100 %}...{% endif %}
+                        {% else %}
+                            <span class="text-muted">Sin descripción</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge">{{ formulario.campos|length }} campos</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-info">{{ formulario.respuestas|length }} respuestas</span>
+                    </td>
+                    <td>
+                        {{ formulario.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}
+                    </td>
+                    <td>
+                        {% if formulario.activo %}
+                            <span class="badge badge-success">Activo</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('diligenciar_formulario', id=formulario.id) }}" class="btn btn-sm btn-outline-success" title="Diligenciar formulario">
+                                <i class="icon-check"></i>
+                            </a>
+                            <a href="{{ url_for('editar_formulario', id=formulario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar formulario">
+                                <i class="icon-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarFormulario({{ formulario.id }}, '{{ formulario.nombre }}')" title="Eliminar formulario">
+                                <i class="icon-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="icon-file-text"></i>
+        </div>
+        <h3>No hay formularios creados</h3>
+        <p>Crea tu primer formulario para comenzar a recopilar información estructurada.</p>
+        <a href="{{ url_for('nuevo_formulario') }}" class="btn btn-primary">
+            <i class="icon-plus"></i> Crear Primer Formulario
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal" id="confirmModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirmar Eliminación</h3>
+            <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>¿Estás seguro de que deseas eliminar el formulario <strong id="formularioNombre"></strong>?</p>
+            <p class="text-warning">Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function eliminarFormulario(id, nombre) {
+    document.getElementById('formularioNombre').textContent = nombre;
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        eliminarFormularioConfirmado(id);
+    };
+    document.getElementById('confirmModal').style.display = 'block';
+}
+
+function eliminarFormularioConfirmado(id) {
+    fetch(`/formularios/${id}/eliminar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar el formulario');
+    });
+}
+
+function closeModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera de él
+window.onclick = function(event) {
+    const modal = document.getElementById('confirmModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

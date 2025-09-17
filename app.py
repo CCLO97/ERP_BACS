@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -18,6 +18,16 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Filtro personalizado para parsear JSON en plantillas
+@app.template_filter('from_json')
+def from_json(json_string):
+    if not json_string:
+        return {}
+    try:
+        return json.loads(json_string)
+    except:
+        return {}
 
 # Inicializar extensiones
 db = SQLAlchemy(app)
@@ -143,6 +153,65 @@ class Incidencia(db.Model):
     cliente = db.relationship('Cliente', back_populates='incidencias')
     sede = db.relationship('Sede', back_populates='incidencias')
     sistema = db.relationship('Sistema', back_populates='incidencias')
+
+# ==================== MODELOS DE FORMULARIOS DINÁMICOS ====================
+
+class Formulario(db.Model):
+    """Modelo para plantillas de formularios creadas por administradores"""
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    descripcion = db.Column(db.Text)
+    activo = db.Column(db.Boolean, default=True)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    creado_por = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Relaciones
+    creador = db.relationship('User', backref='formularios_creados')
+    campos = db.relationship('CampoFormulario', backref='formulario', cascade='all, delete-orphan', order_by='CampoFormulario.orden')
+    respuestas = db.relationship('RespuestaFormulario', backref='formulario', cascade='all, delete-orphan')
+
+class CampoFormulario(db.Model):
+    """Modelo para los campos individuales de un formulario"""
+    id = db.Column(db.Integer, primary_key=True)
+    formulario_id = db.Column(db.Integer, db.ForeignKey('formulario.id'), nullable=False)
+    tipo_campo = db.Column(db.String(50), nullable=False)  # texto, textarea, fecha, seleccion, seleccion_multiple, firma, foto, texto_informativo
+    titulo = db.Column(db.String(200), nullable=False)
+    descripcion = db.Column(db.Text)
+    obligatorio = db.Column(db.Boolean, default=False)
+    orden = db.Column(db.Integer, default=0)
+    configuracion = db.Column(db.Text)  # JSON con configuración específica del campo (opciones, validaciones, etc.)
+    
+    # Relaciones
+    respuestas = db.relationship('RespuestaCampo', backref='campo', cascade='all, delete-orphan')
+
+class RespuestaFormulario(db.Model):
+    """Modelo para las respuestas completadas de un formulario"""
+    id = db.Column(db.Integer, primary_key=True)
+    formulario_id = db.Column(db.Integer, db.ForeignKey('formulario.id'), nullable=False)
+    diligenciado_por = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    fecha_diligenciamiento = db.Column(db.DateTime, default=datetime.utcnow)
+    estado = db.Column(db.String(20), default='Completado')  # Completado, Borrador
+    archivo_pdf = db.Column(db.String(500))  # Ruta del PDF generado
+    
+    # Relaciones
+    usuario = db.relationship('User', backref='formularios_diligenciados')
+    respuestas_campos = db.relationship('RespuestaCampo', backref='respuesta_formulario', cascade='all, delete-orphan')
+
+class RespuestaCampo(db.Model):
+    """Modelo para las respuestas individuales de cada campo"""
+    id = db.Column(db.Integer, primary_key=True)
+    respuesta_formulario_id = db.Column(db.Integer, db.ForeignKey('respuesta_formulario.id'), nullable=False)
+    campo_id = db.Column(db.Integer, db.ForeignKey('campo_formulario.id'), nullable=False)
+    valor_texto = db.Column(db.Text)
+    valor_fecha = db.Column(db.DateTime)
+    valor_archivo = db.Column(db.String(500))  # Para firmas, fotos, etc.
+    valor_json = db.Column(db.Text)  # Para selecciones múltiples y otros datos complejos
+    # Campos adicionales para firmas
+    nombre_firmante = db.Column(db.String(100))
+    documento_firmante = db.Column(db.String(20))
+    telefono_firmante = db.Column(db.String(20))
+    empresa_firmante = db.Column(db.String(100))
+    cargo_firmante = db.Column(db.String(100))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -1144,11 +1213,13 @@ def generar_pdf_profesional(incidencias, agrupacion='estado'):
                                     ratio = min(max_width/img.width, max_height/img.height)
                                     new_width = int(img.width * ratio)
                                     new_height = int(img.height * ratio)
-                                    img = img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                                else:
+                                    new_width = img.width
+                                    new_height = img.height
                                 
-                                # Guardar imagen temporalmente
+                                # Guardar imagen temporalmente con máxima calidad y DPI original
                                 temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{archivo}')
-                                img.save(temp_path)
+                                img.save(temp_path, quality=100, optimize=False)
                                 
                                 # Agregar espacio antes de la imagen
                                 story.append(Spacer(1, 10))
@@ -1158,8 +1229,8 @@ def generar_pdf_profesional(incidencias, agrupacion='estado'):
                                 caption = Paragraph(caption_text, caption_style)
                                 story.append(caption)
                                 
-                                # Agregar imagen centrada con borde
-                                pdf_image = Image(temp_path, width=img.width, height=img.height)
+                                # Agregar imagen centrada con borde usando dimensiones más grandes para mejor resolución
+                                pdf_image = Image(temp_path, width=new_width*2, height=new_height*2)
                                 
                                 # Crear tabla para centrar la imagen con borde
                                 image_table = Table([[pdf_image]], colWidths=[img.width])
@@ -1377,9 +1448,9 @@ def generar_pdf_multipagina_profesional(incidencias, agrupacion='estado'):
                                     new_height = int(img.height * ratio)
                                     img = img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
                                 
-                                # Guardar imagen temporalmente
+                                # Guardar imagen temporalmente con máxima calidad y DPI muy alto
                                 temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{archivo}')
-                                img.save(temp_path)
+                                img.save(temp_path, quality=100, optimize=False, dpi=(1200, 1200))
                                 
                                 # Salto de página antes de cada imagen
                                 story.append(Spacer(1, 50))
@@ -1597,9 +1668,9 @@ def generar_pdf_informe_estructurado(incidencias, datos_informe):
                                 new_height = int(img.height * ratio)
                                 img = img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
                             
-                            # Guardar imagen temporalmente
+                            # Guardar imagen temporalmente con máxima calidad y DPI muy alto
                             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{archivo}')
-                            img.save(temp_path)
+                            img.save(temp_path, quality=100, optimize=False, dpi=(1200, 1200))
                             
                             # Agregar espacio antes de la imagen
                             story.append(Spacer(1, 15))
@@ -2269,6 +2340,1245 @@ def eliminar_rol(id):
         flash('Error al eliminar rol: ' + str(e), 'error')
     
     return redirect(url_for('roles'))
+
+# ==================== GESTIÓN DE FORMULARIOS DINÁMICOS ====================
+
+@app.route('/formularios')
+@login_required
+def formularios():
+    """Vista principal de formularios - diferente según el rol del usuario"""
+    if current_user.rol.nombre == 'Administrador':
+        # Los administradores ven todos los formularios y pueden gestionarlos
+        formularios = Formulario.query.filter_by(activo=True).order_by(Formulario.fecha_creacion.desc()).all()
+        return render_template('formularios_admin.html', formularios=formularios)
+    else:
+        # Los técnicos y coordinadores ven solo los formularios disponibles para diligenciar
+        formularios = Formulario.query.filter_by(activo=True).order_by(Formulario.nombre).all()
+        return render_template('formularios_usuario.html', formularios=formularios)
+
+@app.route('/formularios/nuevo', methods=['GET', 'POST'])
+@login_required
+def nuevo_formulario():
+    """Crear nuevo formulario - solo administradores"""
+    if current_user.rol.nombre != 'Administrador':
+        flash('No tienes permisos para acceder a esta sección', 'error')
+        return redirect(url_for('formularios'))
+    
+    if request.method == 'POST':
+        nombre = request.form['nombre'].strip()
+        descripcion = request.form.get('descripcion', '').strip()
+        
+        # Verificar que el nombre no esté vacío
+        if not nombre:
+            flash('El nombre del formulario es obligatorio', 'error')
+            return redirect(url_for('nuevo_formulario'))
+        
+        # Crear nuevo formulario
+        formulario = Formulario(
+            nombre=nombre,
+            descripcion=descripcion,
+            creado_por=current_user.id
+        )
+        
+        try:
+            db.session.add(formulario)
+            db.session.commit()
+            flash('Formulario creado exitosamente', 'success')
+            return redirect(url_for('editar_formulario', id=formulario.id))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error al crear formulario: ' + str(e), 'error')
+    
+    return render_template('nuevo_formulario.html')
+
+@app.route('/formularios/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_formulario(id):
+    """Editar formulario y sus campos - solo administradores"""
+    if current_user.rol.nombre != 'Administrador':
+        flash('No tienes permisos para acceder a esta sección', 'error')
+        return redirect(url_for('formularios'))
+    
+    formulario = Formulario.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        formulario.nombre = request.form['nombre'].strip()
+        formulario.descripcion = request.form.get('descripcion', '').strip()
+        formulario.activo = 'activo' in request.form
+        
+        try:
+            db.session.commit()
+            flash('Formulario actualizado exitosamente', 'success')
+            return redirect(url_for('editar_formulario', id=id))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error al actualizar formulario: ' + str(e), 'error')
+    
+    return render_template('editar_formulario.html', formulario=formulario)
+
+@app.route('/formularios/<int:id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_formulario(id):
+    """Eliminar formulario - solo administradores"""
+    if current_user.rol.nombre != 'Administrador':
+        return jsonify({'success': False, 'message': 'No tienes permisos para realizar esta acción'})
+    
+    formulario = Formulario.query.get_or_404(id)
+    
+    # Verificar si tiene respuestas asociadas
+    respuestas_count = RespuestaFormulario.query.filter_by(formulario_id=id).count()
+    if respuestas_count > 0:
+        return jsonify({'success': False, 'message': f'No se puede eliminar el formulario porque tiene {respuestas_count} respuestas asociadas'})
+    
+    try:
+        formulario.activo = False
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Formulario eliminado exitosamente'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error al eliminar formulario: {str(e)}'})
+
+@app.route('/formularios/<int:id>/diligenciar', methods=['GET', 'POST'])
+@login_required
+def diligenciar_formulario(id):
+    """Diligenciar un formulario - técnicos y coordinadores"""
+    formulario = Formulario.query.get_or_404(id)
+    
+    if not formulario.activo:
+        flash('Este formulario no está disponible', 'error')
+        return redirect(url_for('formularios'))
+    
+    if request.method == 'POST':
+        # Crear respuesta del formulario
+        respuesta_formulario = RespuestaFormulario(
+            formulario_id=id,
+            diligenciado_por=current_user.id,
+            estado='Completado'
+        )
+        
+        try:
+            print(f"DEBUG: Iniciando guardado del formulario {id}")
+            db.session.add(respuesta_formulario)
+            db.session.flush()  # Para obtener el ID
+            print(f"DEBUG: RespuestaFormulario creada con ID: {respuesta_formulario.id}")
+            
+            # Procesar respuestas de cada campo
+            campos_procesados = 0
+            for campo in formulario.campos:
+                respuesta_campo = RespuestaCampo(
+                    respuesta_formulario_id=respuesta_formulario.id,
+                    campo_id=campo.id
+                )
+                
+                # Procesar según el tipo de campo
+                if campo.tipo_campo == 'texto':
+                    respuesta_campo.valor_texto = request.form.get(f'campo_{campo.id}', '')
+                elif campo.tipo_campo == 'textarea':
+                    respuesta_campo.valor_texto = request.form.get(f'campo_{campo.id}', '')
+                elif campo.tipo_campo == 'fecha':
+                    fecha_str = request.form.get(f'campo_{campo.id}', '')
+                    if fecha_str:
+                        respuesta_campo.valor_fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
+                elif campo.tipo_campo in ['seleccion', 'seleccion_multiple']:
+                    respuesta_campo.valor_texto = request.form.get(f'campo_{campo.id}', '')
+                elif campo.tipo_campo == 'firma':
+                    # Procesar firma con información del firmante
+                    firma_data = request.form.get(f'campo_{campo.id}', '')
+                    if firma_data:
+                        respuesta_campo.valor_archivo = firma_data
+                        # Guardar información adicional del firmante
+                        respuesta_campo.nombre_firmante = request.form.get(f'nombre_{campo.id}', '')
+                        respuesta_campo.documento_firmante = request.form.get(f'documento_{campo.id}', '')
+                        respuesta_campo.telefono_firmante = request.form.get(f'telefono_{campo.id}', '')
+                        respuesta_campo.empresa_firmante = request.form.get(f'empresa_{campo.id}', '')
+                        respuesta_campo.cargo_firmante = request.form.get(f'cargo_{campo.id}', '')
+                elif campo.tipo_campo == 'foto':
+                    # Procesar fotos múltiples con renombrado automático
+                    archivos = request.files.getlist(f'campo_{campo.id}')
+                    print(f"DEBUG: Campo {campo.id} - Recibidos {len(archivos)} archivos")
+                    
+                    nombres_archivos = []
+                    for i, archivo in enumerate(archivos):
+                        print(f"DEBUG: Archivo {i+1}: {archivo.filename if archivo.filename else 'Sin nombre'}")
+                        if archivo and archivo.filename:
+                            # Generar nombre único con ID y timestamp
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            file_extension = os.path.splitext(archivo.filename)[1].lower()
+                            if not file_extension:
+                                file_extension = '.jpg'  # Default para imágenes sin extensión
+                            
+                            # Crear nombre único: foto_campoID_respuestaID_timestamp.ext
+                            unique_filename = f'foto_{campo.id}_{respuesta_formulario.id}_{timestamp}_{i+1}{file_extension}'
+                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                            
+                            print(f"DEBUG: Guardando como: {unique_filename}")
+                            archivo.save(filepath)
+                            nombres_archivos.append(unique_filename)
+                            print(f"DEBUG: Archivo guardado exitosamente: {unique_filename}")
+                    
+                    if nombres_archivos:
+                        respuesta_campo.valor_archivo = ','.join(nombres_archivos)
+                        print(f"DEBUG: Valor archivo guardado: {respuesta_campo.valor_archivo}")
+                    else:
+                        print(f"DEBUG: No se guardaron archivos para el campo {campo.id}")
+                elif campo.tipo_campo == 'texto_informativo':
+                    # Los campos informativos no tienen respuesta
+                    continue
+                
+                db.session.add(respuesta_campo)
+                campos_procesados += 1
+                print(f"DEBUG: Campo {campo.id} ({campo.titulo}) procesado exitosamente")
+            
+            print(f"DEBUG: Total de campos procesados: {campos_procesados}")
+            db.session.commit()
+            print(f"DEBUG: Formulario guardado exitosamente en la base de datos")
+            
+            # Generar PDF automáticamente - USANDO LA FUNCIÓN ORIGINAL QUE FUNCIONABA
+            print(f"DEBUG: Iniciando generación de PDF para respuesta {respuesta_formulario.id}")
+            
+            pdf_path = generar_pdf_formulario(respuesta_formulario)
+            
+            if pdf_path:
+                respuesta_formulario.archivo_pdf = pdf_path
+                db.session.commit()
+                print(f"DEBUG: PDF generado exitosamente: {pdf_path}")
+                
+                # Redirigir a página de descarga
+                flash('Formulario diligenciado y PDF generado exitosamente', 'success')
+                return redirect(url_for('descargar_formulario_pdf', id=respuesta_formulario.id))
+            else:
+                print("DEBUG: Error al generar PDF")
+                flash('Formulario diligenciado exitosamente, pero hubo un error al generar el PDF', 'warning')
+                return redirect(url_for('formularios'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash('Error al diligenciar formulario: ' + str(e), 'error')
+    
+    return render_template('diligenciar_formulario.html', formulario=formulario)
+
+@app.route('/formularios/<int:id>/descargar-pdf')
+@login_required
+def descargar_formulario_pdf(id):
+    """Descargar PDF del formulario diligenciado - compatible con móviles"""
+    respuesta_formulario = RespuestaFormulario.query.get_or_404(id)
+    
+    # Verificar permisos
+    if current_user.rol.nombre not in ['Administrador', 'Coordinador'] and respuesta_formulario.diligenciado_por != current_user.id:
+        flash('No tienes permisos para acceder a este formulario', 'error')
+        return redirect(url_for('formularios'))
+    
+    if not respuesta_formulario.archivo_pdf:
+        flash('No se encontró el archivo PDF', 'error')
+        return redirect(url_for('formularios'))
+    
+    # Buscar el archivo en la nueva estructura: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
+    formulario_nombre = secure_filename(respuesta_formulario.formulario.nombre)
+    pdf_filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', formulario_nombre, respuesta_formulario.archivo_pdf)
+    
+    if not os.path.exists(pdf_filepath):
+        flash('El archivo PDF no existe', 'error')
+        return redirect(url_for('formularios'))
+    
+    # Detectar si es un dispositivo móvil
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'tablet'])
+    
+    if is_mobile:
+        # Para móviles, mostrar página de descarga con JavaScript
+        return render_template('descargar_pdf_mobile.html', 
+                             pdf_url=url_for('descargar_formulario_pdf_file', id=id),
+                             formulario_nombre=respuesta_formulario.formulario.nombre,
+                             fecha=respuesta_formulario.fecha_diligenciamiento.strftime('%d/%m/%Y %H:%M'))
+    else:
+        # Para PC, descarga directa
+        return send_file(
+            pdf_filepath,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=respuesta_formulario.archivo_pdf
+        )
+
+@app.route('/formularios/<int:id>/pdf-file')
+@login_required
+def descargar_formulario_pdf_file(id):
+    """Servir el archivo PDF directamente"""
+    respuesta_formulario = RespuestaFormulario.query.get_or_404(id)
+    
+    # Verificar permisos
+    if current_user.rol.nombre not in ['Administrador', 'Coordinador'] and respuesta_formulario.diligenciado_por != current_user.id:
+        abort(403)
+    
+    if not respuesta_formulario.archivo_pdf:
+        abort(404)
+    
+    # Buscar el archivo en la nueva estructura: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
+    formulario_nombre = secure_filename(respuesta_formulario.formulario.nombre)
+    pdf_filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', formulario_nombre, respuesta_formulario.archivo_pdf)
+    
+    if not os.path.exists(pdf_filepath):
+        abort(404)
+    
+    return send_file(
+        pdf_filepath,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=respuesta_formulario.archivo_pdf
+    )
+
+@app.route('/api/formularios/<int:id>/campos', methods=['POST'])
+@login_required
+def agregar_campo_formulario(id):
+    """Agregar campo a un formulario - solo administradores"""
+    if current_user.rol.nombre != 'Administrador':
+        return jsonify({'success': False, 'message': 'No tienes permisos para realizar esta acción'})
+    
+    formulario = Formulario.query.get_or_404(id)
+    
+    data = request.get_json()
+    tipo_campo = data.get('tipo_campo')
+    titulo = data.get('titulo', '').strip()
+    descripcion = data.get('descripcion', '').strip()
+    obligatorio = data.get('obligatorio', False)
+    configuracion = data.get('configuracion', {})
+    
+    if not titulo:
+        return jsonify({'success': False, 'message': 'El título del campo es obligatorio'})
+    
+    # Obtener el siguiente orden
+    ultimo_campo = CampoFormulario.query.filter_by(formulario_id=id).order_by(CampoFormulario.orden.desc()).first()
+    siguiente_orden = (ultimo_campo.orden + 1) if ultimo_campo else 1
+    
+    # Crear nuevo campo
+    campo = CampoFormulario(
+        formulario_id=id,
+        tipo_campo=tipo_campo,
+        titulo=titulo,
+        descripcion=descripcion,
+        obligatorio=obligatorio,
+        orden=siguiente_orden,
+        configuracion=json.dumps(configuracion) if configuracion else None
+    )
+    
+    try:
+        db.session.add(campo)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Campo agregado exitosamente', 'campo_id': campo.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error al agregar campo: {str(e)}'})
+
+@app.route('/api/formularios/campos/<int:id>', methods=['PUT', 'DELETE'])
+@login_required
+def gestionar_campo_formulario(id):
+    """Actualizar o eliminar campo de formulario - solo administradores"""
+    if current_user.rol.nombre != 'Administrador':
+        return jsonify({'success': False, 'message': 'No tienes permisos para realizar esta acción'})
+    
+    campo = CampoFormulario.query.get_or_404(id)
+    
+    if request.method == 'PUT':
+        # Actualizar campo
+        data = request.get_json()
+        campo.titulo = data.get('titulo', campo.titulo).strip()
+        campo.descripcion = data.get('descripcion', campo.descripcion).strip()
+        campo.obligatorio = data.get('obligatorio', campo.obligatorio)
+        campo.orden = data.get('orden', campo.orden)
+        
+        configuracion = data.get('configuracion')
+        if configuracion is not None:
+            campo.configuracion = json.dumps(configuracion) if configuracion else None
+        
+        try:
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Campo actualizado exitosamente'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error al actualizar campo: {str(e)}'})
+    
+    elif request.method == 'DELETE':
+        # Eliminar campo
+        try:
+            db.session.delete(campo)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Campo eliminado exitosamente'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error al eliminar campo: {str(e)}'})
+
+def generar_pdf_simple(respuesta_formulario):
+    """Generar PDF del formulario diligenciado - VERSIÓN SIMPLIFICADA"""
+    try:
+        print(f"DEBUG: Generando PDF simple para formulario {respuesta_formulario.formulario.nombre}")
+        
+        buffer = io.BytesIO()
+        
+        from reportlab.lib.pagesizes import A4
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                              leftMargin=40, rightMargin=40,
+                              topMargin=40, bottomMargin=40)
+        
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Estilos simples
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=18,
+            spaceAfter=20,
+            alignment=1,
+            textColor=colors.HexColor('#2c3e50'),
+            fontName='Helvetica-Bold'
+        )
+        
+        field_style = ParagraphStyle(
+            'FieldStyle',
+            parent=styles['Normal'],
+            fontSize=12,
+            spaceAfter=10,
+            spaceBefore=5,
+            fontName='Helvetica',
+            textColor=colors.HexColor('#2c3e50')
+        )
+        
+        value_style = ParagraphStyle(
+            'ValueStyle',
+            parent=styles['Normal'],
+            fontSize=11,
+            spaceAfter=15,
+            fontName='Helvetica',
+            textColor=colors.HexColor('#34495e'),
+            leftIndent=20
+        )
+        
+        # Encabezado con logo (igual que en incidencias)
+        header_data = []
+        logo_cell = obtener_logo_pdf(max_width=80, max_height=40)
+        
+        header_data.append([logo_cell, f'FORMULARIO: {respuesta_formulario.formulario.nombre}', 
+                           f'Fecha: {respuesta_formulario.fecha_diligenciamiento.strftime("%d/%m/%Y %H:%M")}'])
+        
+        header_table = Table(header_data, colWidths=[100, 200, 100])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (1, 0), (1, 0), 16),
+            ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (2, 0), (2, 0), 10),
+            ('FONTNAME', (2, 0), (2, 0), 'Helvetica'),
+            ('LINEBELOW', (0, 0), (-1, -1), 2, colors.black),
+        ]))
+        
+        story.append(header_table)
+        story.append(Spacer(1, 20))
+        
+        # Información del diligenciador
+        info_text = f"""
+        <b>Diligenciado por:</b> {respuesta_formulario.usuario.nombre}<br/>
+        <b>Rol:</b> {respuesta_formulario.usuario.rol.nombre}<br/>
+        <b>Fecha de diligenciamiento:</b> {respuesta_formulario.fecha_diligenciamiento.strftime('%d/%m/%Y %H:%M')}
+        """
+        
+        story.append(Paragraph(info_text, field_style))
+        story.append(Spacer(1, 20))
+        
+        # Campos del formulario - SIMPLIFICADO
+        for campo in respuesta_formulario.formulario.campos:
+            # Buscar la respuesta para este campo
+            respuesta_campo = next((rc for rc in respuesta_formulario.respuestas_campos if rc.campo_id == campo.id), None)
+            
+            if not respuesta_campo:
+                continue
+            
+            # Título del campo
+            titulo_text = f"<b>{campo.titulo}</b>"
+            if campo.obligatorio:
+                titulo_text += " <i>(Obligatorio)</i>"
+            
+            story.append(Paragraph(titulo_text, field_style))
+            
+            # Valor del campo - SIMPLIFICADO
+            valor = ""
+            if campo.tipo_campo in ['texto', 'textarea', 'seleccion', 'seleccion_multiple']:
+                valor = respuesta_campo.valor_texto or "Sin respuesta"
+            elif campo.tipo_campo == 'fecha':
+                valor = respuesta_campo.valor_fecha.strftime('%d/%m/%Y') if respuesta_campo.valor_fecha else "Sin fecha"
+            elif campo.tipo_campo == 'firma':
+                if respuesta_campo.valor_archivo:
+                    # Información del firmante
+                    info_firmante = []
+                    if hasattr(respuesta_campo, 'nombre_firmante') and respuesta_campo.nombre_firmante:
+                        info_firmante.append(f"<b>Nombre:</b> {respuesta_campo.nombre_firmante}")
+                    if hasattr(respuesta_campo, 'documento_firmante') and respuesta_campo.documento_firmante:
+                        info_firmante.append(f"<b>Documento:</b> {respuesta_campo.documento_firmante}")
+                    if hasattr(respuesta_campo, 'telefono_firmante') and respuesta_campo.telefono_firmante:
+                        info_firmante.append(f"<b>Teléfono:</b> {respuesta_campo.telefono_firmante}")
+                    if hasattr(respuesta_campo, 'empresa_firmante') and respuesta_campo.empresa_firmante:
+                        info_firmante.append(f"<b>Empresa:</b> {respuesta_campo.empresa_firmante}")
+                    if hasattr(respuesta_campo, 'cargo_firmante') and respuesta_campo.cargo_firmante:
+                        info_firmante.append(f"<b>Cargo:</b> {respuesta_campo.cargo_firmante}")
+                    
+                    valor = "<br/>".join(info_firmante) if info_firmante else "Firma digital registrada"
+                    
+                    # Agregar la imagen de la firma (SIMPLIFICADO COMO INCIDENCIAS)
+                    try:
+                        import base64
+                        print(f"DEBUG SIMPLE: Procesando firma para campo {campo.id}")
+                        print(f"DEBUG SIMPLE: Valor archivo length: {len(respuesta_campo.valor_archivo) if respuesta_campo.valor_archivo else 0}")
+                        
+                        if respuesta_campo.valor_archivo.startswith('data:image'):
+                            firma_data = respuesta_campo.valor_archivo.split(',')[1]
+                            print(f"DEBUG SIMPLE: Firma en formato data:image detectada")
+                        else:
+                            firma_data = respuesta_campo.valor_archivo
+                            print(f"DEBUG SIMPLE: Firma en formato base64 directo")
+                        
+                        # Limpiar y agregar padding
+                        firma_data = firma_data.strip()
+                        missing_padding = len(firma_data) % 4
+                        if missing_padding:
+                            firma_data += '=' * (4 - missing_padding)
+                        
+                        try:
+                            print(f"DEBUG SIMPLE: Intentando decodificar base64...")
+                            firma_bytes = base64.b64decode(firma_data)
+                            print(f"DEBUG SIMPLE: Base64 decodificado exitosamente, tamaño: {len(firma_bytes)} bytes")
+                            
+                            # Validar que el archivo no esté vacío
+                            if len(firma_bytes) == 0:
+                                raise ValueError("Archivo de firma vacío")
+                                
+                            # Validar que tenga el header de imagen PNG
+                            if not firma_bytes.startswith(b'\x89PNG'):
+                                print(f"DEBUG SIMPLE: Advertencia - El archivo no parece ser PNG válido")
+                                
+                        except Exception as decode_error:
+                            print(f"ERROR SIMPLE: Error decodificando base64: {decode_error}")
+                            error_text = f"<b>Error:</b> Datos de firma inválidos o corruptos"
+                            error_paragraph = Paragraph(error_text, value_style)
+                            story.append(error_paragraph)
+                            continue
+                        
+                        # Crear imagen temporal
+                        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_firma_{campo.id}.png')
+                        with open(temp_path, 'wb') as f:
+                            f.write(firma_bytes)
+                        
+                        print(f"DEBUG SIMPLE: Archivo temporal creado: {temp_path}")
+                        
+                        # Procesar imagen EXACTAMENTE como en incidencias
+                        try:
+                            with PILImage.open(temp_path) as img:
+                                print(f"DEBUG SIMPLE: Imagen abierta exitosamente - Dimensiones: {img.width}x{img.height}")
+                                # Verificar que la imagen se puede cargar completamente
+                                img.verify()
+                                print(f"DEBUG SIMPLE: Imagen verificada exitosamente")
+                                
+                                # Reabrir la imagen después de verify() (verify() cierra el archivo)
+                                img = PILImage.open(temp_path)
+                                
+                            # Calcular dimensiones para visualización (sin redimensionar la imagen)
+                            max_width_cm = 3  # cm
+                            max_height_cm = 2  # cm
+                            max_width_points = max_width_cm * 28.35  # convertir cm a puntos
+                            max_height_points = max_height_cm * 28.35
+                            
+                            if img.width > max_width_points or img.height > max_height_points:
+                                ratio = min(max_width_points/img.width, max_height_points/img.height)
+                                new_width = int(img.width * ratio)
+                                new_height = int(img.height * ratio)
+                            else:
+                                new_width = img.width
+                                new_height = img.height
+                            
+                            # Guardar imagen temporalmente con máxima calidad y DPI original
+                            img.save(temp_path, quality=100, optimize=False)
+                            
+                            # Agregar espacio antes de la imagen
+                            story.append(Spacer(1, 10))
+                            
+                            # Crear leyenda mejorada
+                            caption_text = f"Firma Digital - {campo.titulo}"
+                            caption = Paragraph(caption_text, value_style)
+                            story.append(caption)
+                            
+                            # Agregar imagen centrada con borde usando dimensiones más grandes para mejor resolución
+                            pdf_image = Image(temp_path, width=new_width*2, height=new_height*2)
+                            
+                            # Crear tabla para centrar la imagen con borde
+                            image_table = Table([[pdf_image]], colWidths=[new_width*2])
+                            image_table.setStyle(TableStyle([
+                                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                                ('BOX', (0, 0), (0, 0), 1, colors.HexColor('#bdc3c7')),
+                                ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+                            ]))
+                            
+                            story.append(image_table)
+                            
+                            # NO eliminar archivo temporal aquí - se eliminará después de generar el PDF
+                            
+                        except PILImage.UnidentifiedImageError as img_error:
+                            print(f"ERROR SIMPLE: Imagen no identificada para firma {campo.id}: {img_error}")
+                            error_text = f"<b>Error:</b> Imagen de firma no válida o corrupta"
+                            error_paragraph = Paragraph(error_text, value_style)
+                            story.append(error_paragraph)
+                            continue
+                        except Exception as img_error:
+                            print(f"ERROR SIMPLE: Error verificando imagen de firma {campo.id}: {img_error}")
+                            error_text = f"<b>Error:</b> Imagen de firma corrupta o incompleta"
+                            error_paragraph = Paragraph(error_text, value_style)
+                            story.append(error_paragraph)
+                            continue
+                            
+                    except Exception as e:
+                        print(f"Error procesando firma {campo.id}: {e}")
+                        continue
+                else:
+                    valor = "Sin firma"
+            elif campo.tipo_campo == 'foto':
+                if respuesta_campo.valor_archivo:
+                    fotos_list = respuesta_campo.valor_archivo.split(',')
+                    valor = f"{len(fotos_list)} foto(s) adjunta(s)"
+                    
+                    # Agregar las fotos (igual que en incidencias)
+                    contador_imagen = 1
+                    for foto_filename in fotos_list:
+                        foto_filename = foto_filename.strip()
+                        foto_path = os.path.join(app.config['UPLOAD_FOLDER'], foto_filename)
+                        
+                        if os.path.exists(foto_path):
+                            try:
+                                with PILImage.open(foto_path) as img:
+                                    # Calcular dimensiones para visualización (sin redimensionar la imagen)
+                                    max_width = 500
+                                    max_height = 400
+                                    
+                                    if img.width > max_width or img.height > max_height:
+                                        ratio = min(max_width/img.width, max_height/img.height)
+                                        new_width = int(img.width * ratio)
+                                        new_height = int(img.height * ratio)
+                                    else:
+                                        new_width = img.width
+                                        new_height = img.height
+                                    
+                                    # Guardar imagen temporalmente con máxima calidad y DPI original
+                                    temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{foto_filename}')
+                                    img.save(temp_path, quality=100, optimize=False)
+                                    
+                                    # Agregar al PDF
+                                    story.append(Spacer(1, 10))
+                                    caption_text = f"Figura {contador_imagen}. {foto_filename.replace('_', ' ').replace('.jpg', '').replace('.png', '').replace('.jpeg', '').title()}"
+                                    caption = Paragraph(caption_text, value_style)
+                                    story.append(caption)
+                                    
+                                    pdf_image = Image(temp_path, width=new_width*2, height=new_height*2)
+                                    image_table = Table([[pdf_image]], colWidths=[new_width*2])
+                                    image_table.setStyle(TableStyle([
+                                        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                                        ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                                        ('BOX', (0, 0), (0, 0), 1, colors.HexColor('#bdc3c7')),
+                                        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+                                    ]))
+                                    
+                                    story.append(image_table)
+                                    contador_imagen += 1
+                                    os.remove(temp_path)
+                                    
+                            except Exception as e:
+                                print(f"Error procesando imagen {foto_filename}: {e}")
+                                continue
+                        else:
+                            print(f"Archivo no encontrado: {foto_path}")
+                            continue
+                else:
+                    valor = "Sin fotos"
+            
+            story.append(Paragraph(valor, value_style))
+        
+        # Pie de página
+        story.append(Spacer(1, 30))
+        footer_text = """
+        <para align=center>
+        <font name="Helvetica" size="9" color="#666666">
+        Formulario generado automáticamente por el Sistema ERP BACS<br/>
+        Building Automation and Control System
+        </font>
+        </para>
+        """
+        story.append(Paragraph(footer_text, styles['Normal']))
+        
+        # Construir el PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        # Guardar archivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f'formulario_{respuesta_formulario.formulario.nombre}_{respuesta_formulario.id}_{timestamp}.pdf'
+        filename = secure_filename(filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        print(f"DEBUG: Guardando PDF simple en: {filepath}")
+        with open(filepath, 'wb') as f:
+            f.write(buffer.getvalue())
+        
+        print(f"DEBUG: PDF simple generado exitosamente: {filename}")
+        return filename
+        
+    except Exception as e:
+        print(f"DEBUG: Error generando PDF simple: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def procesar_firma_con_metodos_alternativos(firma_bytes, temp_path):
+    """Intentar procesar firma con métodos alternativos para imágenes truncadas"""
+    try:
+        # Método 1: Usar PIL con configuración para imágenes truncadas
+        from PIL import ImageFile
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        
+        img = PILImage.open(io.BytesIO(firma_bytes))
+        img.save(temp_path, format='PNG', quality=100, optimize=False)
+        return img, temp_path
+        
+    except Exception as e:
+        print(f"DEBUG: Método PIL con LOAD_TRUNCATED_IMAGES falló: {e}")
+        
+        try:
+            # Método 2: Intentar reconstruir la imagen manualmente
+            # Buscar el final de la imagen PNG
+            if firma_bytes.startswith(b'\x89PNG'):
+                # PNG termina con IEND
+                end_marker = b'IEND\xaeB`\x82'
+                end_pos = firma_bytes.rfind(end_marker)
+                if end_pos != -1:
+                    # Reconstruir PNG completo
+                    reconstructed = firma_bytes[:end_pos + len(end_marker)]
+                    img = PILImage.open(io.BytesIO(reconstructed))
+                    img.save(temp_path, format='PNG', quality=100, optimize=False)
+                    return img, temp_path
+            
+            # Si no es PNG, intentar con JPEG
+            elif firma_bytes.startswith(b'\xff\xd8\xff'):
+                # JPEG termina con FFD9
+                end_marker = b'\xff\xd9'
+                end_pos = firma_bytes.rfind(end_marker)
+                if end_pos != -1:
+                    reconstructed = firma_bytes[:end_pos + len(end_marker)]
+                    img = PILImage.open(io.BytesIO(reconstructed))
+                    img.save(temp_path, format='PNG', quality=100, optimize=False)
+                    return img, temp_path
+                    
+        except Exception as e2:
+            print(f"DEBUG: Método de reconstrucción falló: {e2}")
+        
+        # Método 3: Crear imagen placeholder si todo falla
+        try:
+            print(f"DEBUG: Creando imagen placeholder...")
+            placeholder = PILImage.new('RGB', (400, 200), color='white')
+            
+            # Agregar texto indicando que es una firma
+            from PIL import ImageDraw, ImageFont
+            draw = ImageDraw.Draw(placeholder)
+            
+            # Intentar usar una fuente, si no está disponible usar la por defecto
+            try:
+                font = ImageFont.truetype("arial.ttf", 20)
+            except:
+                font = ImageFont.load_default()
+            
+            text = "FIRMA DIGITAL"
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            x = (400 - text_width) // 2
+            y = (200 - text_height) // 2
+            
+            draw.text((x, y), text, fill='black', font=font)
+            draw.rectangle([10, 10, 390, 190], outline='gray', width=2)
+            
+            placeholder.save(temp_path, format='PNG', quality=100, optimize=False)
+            return placeholder, temp_path
+            
+        except Exception as e3:
+            print(f"DEBUG: Método placeholder falló: {e3}")
+            raise e3
+
+def procesar_firma_para_pdf(respuesta_campo, campo, story, value_style):
+    """Procesar firma y agregar al PDF con manejo robusto de errores"""
+    try:
+        import base64
+        print(f"DEBUG: Procesando firma para campo {campo.id}")
+        
+        if not respuesta_campo.valor_archivo:
+            return "Sin firma"
+        
+        print(f"DEBUG: Valor archivo length: {len(respuesta_campo.valor_archivo)}")
+        
+        # Verificar si la firma tiene el formato data:image/png;base64,
+        if respuesta_campo.valor_archivo.startswith('data:image'):
+            firma_data = respuesta_campo.valor_archivo.split(',')[1]
+            print(f"DEBUG: Firma en formato data:image detectada")
+        else:
+            firma_data = respuesta_campo.valor_archivo
+            print(f"DEBUG: Firma en formato base64 directo")
+        
+        # Limpiar el string base64
+        firma_data = firma_data.strip()
+        
+        # Validar que no esté vacío
+        if not firma_data:
+            raise ValueError("Datos de firma vacíos")
+        
+        # Agregar padding si es necesario
+        missing_padding = len(firma_data) % 4
+        if missing_padding:
+            firma_data += '=' * (4 - missing_padding)
+        
+        print(f"DEBUG: Intentando decodificar base64...")
+        
+        # Intentar decodificar base64 con manejo de errores
+        try:
+            firma_bytes = base64.b64decode(firma_data, validate=True)
+            print(f"DEBUG: Base64 decodificado exitosamente, tamaño: {len(firma_bytes)} bytes")
+        except Exception as decode_error:
+            print(f"ERROR: Error decodificando base64: {decode_error}")
+            # Intentar decodificar sin validación como fallback
+            try:
+                firma_bytes = base64.b64decode(firma_data, validate=False)
+                print(f"DEBUG: Base64 decodificado sin validación, tamaño: {len(firma_bytes)} bytes")
+            except Exception as fallback_error:
+                raise ValueError(f"Base64 inválido: {fallback_error}")
+        
+        if len(firma_bytes) == 0:
+            raise ValueError("Archivo de firma vacío")
+        
+        # Validar headers de imagen
+        if not (firma_bytes.startswith(b'\x89PNG') or firma_bytes.startswith(b'\xff\xd8\xff')):
+            print(f"WARNING: El archivo no parece ser PNG o JPEG válido")
+            print(f"DEBUG: Primeros bytes: {firma_bytes[:10].hex()}")
+            # Intentar procesar de todas formas
+        
+        # Crear imagen temporal
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_firma_{campo.id}.png')
+        
+        # Intentar procesar la imagen con múltiples métodos
+        img = None
+        try:
+            # Método 1: Abrir directamente desde bytes
+            print(f"DEBUG: Intentando abrir imagen desde bytes...")
+            img = PILImage.open(io.BytesIO(firma_bytes))
+            print(f"DEBUG: Imagen abierta exitosamente - Dimensiones: {img.width}x{img.height}")
+            
+        except PILImage.UnidentifiedImageError as img_error:
+            print(f"ERROR: Imagen no identificada: {img_error}")
+            # Método 2: Intentar guardar primero y luego abrir
+            try:
+                print(f"DEBUG: Intentando método alternativo - guardar y reabrir...")
+                with open(temp_path, 'wb') as f:
+                    f.write(firma_bytes)
+                
+                # Intentar abrir desde archivo
+                img = PILImage.open(temp_path)
+                print(f"DEBUG: Imagen abierta desde archivo - Dimensiones: {img.width}x{img.height}")
+                
+            except Exception as fallback_error:
+                print(f"ERROR: Método alternativo falló: {fallback_error}")
+                # Método 3: Usar métodos alternativos para imágenes truncadas
+                try:
+                    print(f"DEBUG: Intentando métodos alternativos para imagen truncada...")
+                    img, temp_path = procesar_firma_con_metodos_alternativos(firma_bytes, temp_path)
+                    print(f"DEBUG: Imagen procesada con métodos alternativos - Dimensiones: {img.width}x{img.height}")
+                except Exception as alt_error:
+                    print(f"ERROR: Métodos alternativos fallaron: {alt_error}")
+                    raise ValueError(f"Imagen corrupta o no válida: {alt_error}")
+        
+        except Exception as general_error:
+            print(f"ERROR: Error general procesando imagen: {general_error}")
+            raise ValueError(f"Error procesando imagen: {general_error}")
+        
+        # Verificar dimensiones válidas
+        if img.width == 0 or img.height == 0:
+            raise ValueError("Imagen con dimensiones inválidas")
+        
+        # Convertir a RGB si es necesario
+        if img.mode in ('RGBA', 'LA', 'P'):
+            print(f"DEBUG: Convirtiendo imagen de {img.mode} a RGB")
+            img = img.convert('RGB')
+        
+        # Calcular dimensiones para visualización
+        max_width = 300
+        max_height = 150
+        
+        if img.width > max_width or img.height > max_height:
+            ratio = min(max_width/img.width, max_height/img.height)
+            new_width = int(img.width * ratio)
+            new_height = int(img.height * ratio)
+        else:
+            new_width = img.width
+            new_height = img.height
+        
+        # Guardar imagen temporalmente con configuración robusta
+        try:
+            # Configurar para manejar imágenes truncadas
+            img.save(temp_path, format='PNG', quality=100, optimize=False)
+            print(f"DEBUG: Imagen de firma guardada exitosamente en {temp_path}")
+        except Exception as save_error:
+            print(f"ERROR: Error guardando imagen: {save_error}")
+            # Intentar con formato JPEG como fallback
+            try:
+                temp_path_jpg = temp_path.replace('.png', '.jpg')
+                img.save(temp_path_jpg, format='JPEG', quality=95, optimize=False)
+                temp_path = temp_path_jpg
+                print(f"DEBUG: Imagen guardada como JPEG: {temp_path}")
+            except Exception as jpeg_error:
+                print(f"ERROR: Error guardando como JPEG: {jpeg_error}")
+                raise ValueError(f"No se pudo guardar la imagen: {jpeg_error}")
+        
+        # Agregar espacio antes de la imagen
+        story.append(Spacer(1, 10))
+        
+        # Crear leyenda
+        caption_text = f"Firma Digital - {campo.titulo}"
+        caption = Paragraph(caption_text, value_style)
+        story.append(caption)
+        
+        # Agregar imagen centrada con borde
+        try:
+            pdf_image = Image(temp_path, width=new_width, height=new_height)
+            
+            # Crear tabla para centrar la imagen con borde
+            image_table = Table([[pdf_image]], colWidths=[new_width])
+            image_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                ('BOX', (0, 0), (0, 0), 1, colors.HexColor('#bdc3c7')),
+                ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+            ]))
+            
+            story.append(image_table)
+            print(f"DEBUG: Firma agregada exitosamente al PDF")
+            
+        except Exception as pdf_error:
+            print(f"ERROR: Error agregando imagen al PDF: {pdf_error}")
+            # Agregar mensaje de error en lugar de la imagen
+            error_text = f"<b>Firma Digital:</b> Imagen procesada pero no se pudo incluir en el PDF"
+            error_paragraph = Paragraph(error_text, value_style)
+            story.append(error_paragraph)
+        
+        return "Firma digital procesada"
+        
+    except Exception as e:
+        print(f"ERROR: Error procesando firma {campo.id}: {e}")
+        # Agregar información de debug
+        error_text = f"<b>Firma Digital:</b> Error procesando imagen ({str(e)[:50]}...)"
+        error_paragraph = Paragraph(error_text, value_style)
+        story.append(error_paragraph)
+        return "Error en firma"
+
+def generar_pdf_formulario(respuesta_formulario):
+    """Generar PDF del formulario diligenciado"""
+    try:
+        print(f"DEBUG: Iniciando generación de PDF para formulario {respuesta_formulario.formulario.nombre}")
+        buffer = io.BytesIO()
+        
+        from reportlab.lib.pagesizes import A4
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                              leftMargin=40, rightMargin=40,
+                              topMargin=40, bottomMargin=40)
+        
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Estilos personalizados
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=18,
+            spaceAfter=20,
+            alignment=1,
+            textColor=colors.HexColor('#2c3e50'),
+            fontName='Helvetica-Bold'
+        )
+        
+        field_style = ParagraphStyle(
+            'FieldStyle',
+            parent=styles['Normal'],
+            fontSize=12,
+            spaceAfter=10,
+            spaceBefore=5,
+            fontName='Helvetica',
+            textColor=colors.HexColor('#2c3e50')
+        )
+        
+        value_style = ParagraphStyle(
+            'ValueStyle',
+            parent=styles['Normal'],
+            fontSize=11,
+            spaceAfter=15,
+            fontName='Helvetica',
+            textColor=colors.HexColor('#34495e'),
+            leftIndent=20
+        )
+        
+        # Encabezado
+        header_data = []
+        logo_cell = obtener_logo_pdf(max_width=80, max_height=40)
+        
+        header_data.append([logo_cell, f'FORMULARIO: {respuesta_formulario.formulario.nombre}', 
+                           f'Fecha: {respuesta_formulario.fecha_diligenciamiento.strftime("%d/%m/%Y %H:%M")}'])
+        
+        header_table = Table(header_data, colWidths=[100, 200, 100])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (1, 0), (1, 0), 16),
+            ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (2, 0), (2, 0), 10),
+            ('FONTNAME', (2, 0), (2, 0), 'Helvetica'),
+            ('LINEBELOW', (0, 0), (-1, -1), 2, colors.black),
+        ]))
+        
+        story.append(header_table)
+        story.append(Spacer(1, 20))
+        
+        # Información del diligenciador
+        info_text = f"""
+        <b>Diligenciado por:</b> {respuesta_formulario.usuario.nombre}<br/>
+        <b>Rol:</b> {respuesta_formulario.usuario.rol.nombre}<br/>
+        <b>Fecha de diligenciamiento:</b> {respuesta_formulario.fecha_diligenciamiento.strftime('%d/%m/%Y %H:%M')}
+        """
+        
+        info_paragraph = Paragraph(info_text, field_style)
+        story.append(info_paragraph)
+        story.append(Spacer(1, 20))
+        
+        # Campos del formulario
+        print(f"DEBUG: Procesando {len(respuesta_formulario.formulario.campos)} campos del formulario")
+        for campo in respuesta_formulario.formulario.campos:
+            print(f"DEBUG: Procesando campo {campo.id} - {campo.titulo} - Tipo: {campo.tipo_campo}")
+            
+            # Buscar la respuesta para este campo
+            respuesta_campo = next((rc for rc in respuesta_formulario.respuestas_campos if rc.campo_id == campo.id), None)
+            
+            if not respuesta_campo:
+                print(f"DEBUG: No se encontró respuesta para el campo {campo.id}")
+                continue
+            
+            print(f"DEBUG: Respuesta encontrada para campo {campo.id}")
+            if campo.tipo_campo in ['foto', 'firma']:
+                print(f"DEBUG: Valor archivo: {respuesta_campo.valor_archivo[:100] if respuesta_campo.valor_archivo else 'None'}...")
+            
+            # Título del campo
+            titulo_text = f"<b>{campo.titulo}</b>"
+            if campo.obligatorio:
+                titulo_text += " <i>(Obligatorio)</i>"
+            
+            titulo_paragraph = Paragraph(titulo_text, field_style)
+            story.append(titulo_paragraph)
+            
+            # Valor del campo
+            valor = ""
+            if campo.tipo_campo in ['texto', 'textarea', 'seleccion', 'seleccion_multiple']:
+                valor = respuesta_campo.valor_texto or "Sin respuesta"
+            elif campo.tipo_campo == 'fecha':
+                valor = respuesta_campo.valor_fecha.strftime('%d/%m/%Y') if respuesta_campo.valor_fecha else "Sin fecha"
+            elif campo.tipo_campo == 'firma':
+                print(f"DEBUG: Procesando campo de firma {campo.id} - {campo.titulo}")
+                
+                # Información del firmante (verificar si los campos existen)
+                info_firmante = []
+                try:
+                    print(f"DEBUG: Verificando datos del firmante para campo {campo.id}")
+                    print(f"DEBUG: nombre_firmante: {getattr(respuesta_campo, 'nombre_firmante', 'None')}")
+                    print(f"DEBUG: documento_firmante: {getattr(respuesta_campo, 'documento_firmante', 'None')}")
+                    print(f"DEBUG: empresa_firmante: {getattr(respuesta_campo, 'empresa_firmante', 'None')}")
+                    print(f"DEBUG: cargo_firmante: {getattr(respuesta_campo, 'cargo_firmante', 'None')}")
+                    
+                    if hasattr(respuesta_campo, 'nombre_firmante') and respuesta_campo.nombre_firmante:
+                        info_firmante.append(f"<b>Nombre:</b> {respuesta_campo.nombre_firmante}")
+                    if hasattr(respuesta_campo, 'documento_firmante') and respuesta_campo.documento_firmante:
+                        info_firmante.append(f"<b>Documento:</b> {respuesta_campo.documento_firmante}")
+                    if hasattr(respuesta_campo, 'telefono_firmante') and respuesta_campo.telefono_firmante:
+                        info_firmante.append(f"<b>Teléfono:</b> {respuesta_campo.telefono_firmante}")
+                    if hasattr(respuesta_campo, 'empresa_firmante') and respuesta_campo.empresa_firmante:
+                        info_firmante.append(f"<b>Empresa:</b> {respuesta_campo.empresa_firmante}")
+                    if hasattr(respuesta_campo, 'cargo_firmante') and respuesta_campo.cargo_firmante:
+                        info_firmante.append(f"<b>Cargo:</b> {respuesta_campo.cargo_firmante}")
+                        
+                    print(f"DEBUG: Info firmante encontrada: {len(info_firmante)} campos")
+                except AttributeError as e:
+                    print(f"DEBUG: Error accediendo a datos del firmante: {e}")
+                    pass
+                
+                valor = "<br/>".join(info_firmante) if info_firmante else "Firma digital"
+                
+                # Procesar imagen de la firma usando la función auxiliar
+                if respuesta_campo.valor_archivo:
+                    procesar_firma_para_pdf(respuesta_campo, campo, story, value_style)
+                else:
+                    valor = "Sin firma"
+            elif campo.tipo_campo == 'foto':
+                if respuesta_campo.valor_archivo:
+                    fotos_list = respuesta_campo.valor_archivo.split(',')
+                    valor = f"{len(fotos_list)} foto(s) adjunta(s)"
+                    
+                    # Agregar título "Registro Fotográfico" solo una vez
+                    story.append(Spacer(1, 15))
+                    titulo_fotos = Paragraph("<b>Registro Fotográfico</b>", field_style)
+                    story.append(titulo_fotos)
+                    story.append(Spacer(1, 10))
+                    
+                    # Procesar fotos con redimensionamiento inteligente
+                    for foto_filename in fotos_list:
+                        foto_filename = foto_filename.strip()
+                        foto_path = os.path.join(app.config['UPLOAD_FOLDER'], foto_filename)
+                        
+                        if os.path.exists(foto_path):
+                            try:
+                                # Verificar si es una imagen
+                                with PILImage.open(foto_path) as img:
+                                    # Redimensionar según orientación (6cm = ~170 puntos para mejor resolución)
+                                    max_width_cm = 6  # cm
+                                    max_height_cm = 6  # cm
+                                    max_width_points = max_width_cm * 28.35  # convertir cm a puntos
+                                    max_height_points = max_height_cm * 28.35
+                                    
+                                    # Determinar orientación y aplicar reglas
+                                    aspect_ratio = img.width / img.height
+                                    
+                                    if aspect_ratio > 1.1:  # Horizontal (más ancho que alto)
+                                        # Limitar altura a 4cm
+                                        if img.height > max_height_points:
+                                            ratio = max_height_points / img.height
+                                            new_width = int(img.width * ratio)
+                                            new_height = int(img.height * ratio)
+                                        else:
+                                            new_width = img.width
+                                            new_height = img.height
+                                    elif aspect_ratio < 0.9:  # Vertical (más alto que ancho)
+                                        # Limitar ancho a 4cm
+                                        if img.width > max_width_points:
+                                            ratio = max_width_points / img.width
+                                            new_width = int(img.width * ratio)
+                                            new_height = int(img.height * ratio)
+                                        else:
+                                            new_width = img.width
+                                            new_height = img.height
+                                    else:  # Cuadrada (1:1)
+                                        # Limitar a 5x5cm
+                                        max_size_cm = 5
+                                        max_size_points = max_size_cm * 28.35
+                                        if img.width > max_size_points or img.height > max_size_points:
+                                            ratio = min(max_size_points/img.width, max_size_points/img.height)
+                                            new_width = int(img.width * ratio)
+                                            new_height = int(img.height * ratio)
+                                        else:
+                                            new_width = img.width
+                                            new_height = img.height
+                                    
+                                    # NO redimensionar la imagen - mantener resolución original
+                                    # Solo ajustar el tamaño de visualización en el PDF
+                                    
+                                    # Guardar imagen temporalmente con máxima calidad y DPI original
+                                    temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{foto_filename}')
+                                    img.save(temp_path, quality=100, optimize=False)
+                                    
+                                    # Agregar imagen centrada con borde usando dimensiones calculadas
+                                    pdf_image = Image(temp_path, width=new_width, height=new_height)
+                                    
+                                    # Crear tabla para centrar la imagen con borde
+                                    image_table = Table([[pdf_image]], colWidths=[new_width])
+                                    image_table.setStyle(TableStyle([
+                                        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                                        ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                                        ('BOX', (0, 0), (0, 0), 1, colors.HexColor('#bdc3c7')),
+                                        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+                                    ]))
+                                    
+                                    story.append(image_table)
+                                    story.append(Spacer(1, 10))  # Espacio entre fotos
+                                    
+                                    # NO eliminar archivo temporal aquí - se eliminará después de generar el PDF
+                                    
+                            except Exception as e:
+                                print(f"Error procesando imagen {foto_filename}: {e}")
+                                continue
+                else:
+                    valor = "Sin fotos"
+            
+            valor_paragraph = Paragraph(valor, value_style)
+            story.append(valor_paragraph)
+        
+        # Pie de página
+        story.append(Spacer(1, 30))
+        footer_text = f"""
+        <para align=center>
+        <font name="Helvetica" size="9" color="#666666">
+        Formulario generado automáticamente por el Sistema ERP BACS<br/>
+        Building Automation and Control System
+        </font>
+        </para>
+        """
+        footer = Paragraph(footer_text, styles['Normal'])
+        story.append(footer)
+        
+        # Construir el PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        # Guardar archivo en la estructura solicitada: uploads/formularios/nombredelformulario/nombredeldocumento.pdf
+        formulario_nombre = secure_filename(respuesta_formulario.formulario.nombre)
+        documento_nombre = f'documento_{respuesta_formulario.id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        
+        # Crear directorio si no existe
+        formulario_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', formulario_nombre)
+        os.makedirs(formulario_dir, exist_ok=True)
+        
+        filepath = os.path.join(formulario_dir, documento_nombre)
+        
+        print(f"DEBUG: Guardando PDF en: {filepath}")
+        with open(filepath, 'wb') as f:
+            f.write(buffer.getvalue())
+        
+        print(f"DEBUG: PDF generado exitosamente: {documento_nombre}")
+        
+        # Limpiar archivos temporales después de generar el PDF
+        try:
+            import glob
+            temp_files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], 'temp_*'))
+            for temp_file in temp_files:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    print(f"DEBUG: Archivo temporal eliminado: {temp_file}")
+        except Exception as cleanup_error:
+            print(f"DEBUG: Error limpiando archivos temporales: {cleanup_error}")
+        
+        return documento_nombre
+        
+    except Exception as e:
+        print(f"DEBUG: Error generando PDF del formulario: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Limpiar archivos temporales incluso si hay error
+        try:
+            import glob
+            temp_files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], 'temp_*'))
+            for temp_file in temp_files:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+        except:
+            pass
+        
+        return None
 
 if __name__ == '__main__':
     init_db()

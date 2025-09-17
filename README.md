@@ -4,7 +4,7 @@
 
 El ERP BACS es un sistema de gestión empresarial desarrollado específicamente para la empresa BACS (Building Automation and Control System SAS). Este sistema permite la gestión integral de incidencias técnicas, clientes, usuarios, sedes y sistemas, proporcionando una plataforma centralizada para el seguimiento y resolución de problemas técnicos.
 
-## 🚀 Instalación y Configuración
+## 🚀 Instalación y Configuración Completa
 
 ### Requisitos Previos
 
@@ -14,7 +14,23 @@ Antes de instalar el sistema, asegúrate de tener instalado en tu computadora:
 2. **MySQL Server** - Descárgalo desde [mysql.com](https://dev.mysql.com/downloads/mysql/)
 3. **Git** (opcional) - Para clonar el repositorio desde [git-scm.com](https://git-scm.com/downloads)
 
-### Paso a Paso para Poner en Funcionamiento
+### Instalación Automática (Recomendado)
+
+Para una instalación completa y automática, ejecuta:
+
+```bash
+python setup_completo.py
+```
+
+Este script se encargará de:
+- ✅ Crear el entorno virtual
+- ✅ Instalar todas las dependencias
+- ✅ Configurar la base de datos
+- ✅ Crear el archivo .env
+- ✅ Ejecutar las migraciones
+- ✅ Verificar que todo funcione correctamente
+
+### Instalación Manual Paso a Paso
 
 #### 1. Preparar el Entorno de Desarrollo
 
@@ -36,67 +52,34 @@ source venv/bin/activate
 #### 2. Instalar Dependencias
 
 ```bash
-# Instalar todas las librerías necesarias
+# Actualizar pip
 python -m pip install --upgrade pip setuptools wheel
+
+# Instalar todas las librerías necesarias
 pip install -r requirements.txt
 ```
 
-#### 3. Configurar la Base de Datos MySQL
+**⚠️ Si tienes problemas con imports (como "reportlab not found"):**
 
-1. Abre MySQL Workbench, phpMyAdmin o tu cliente MySQL preferido
-2. Crea una nueva base de datos llamada `erp_bacs`:
-   ```sql
-   CREATE DATABASE erp_bacs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
+```bash
+# Reinstalar ReportLab específicamente
+pip uninstall reportlab
+pip install reportlab==4.0.4
 
-#### 4. Migración de la Base de Datos
+# Reinstalar Pillow específicamente
+pip uninstall Pillow
+pip install Pillow==11.3.0
 
-El sistema utiliza SQLAlchemy para la gestión de la base de datos. **IMPORTANTE**: Debes ejecutar la migración ANTES de usar la aplicación.
+# Verificar instalación
+python -c "import reportlab; print('ReportLab OK')"
+python -c "import PIL; print('Pillow OK')"
+```
 
-**Pasos para la migración:**
-
-1. **Ejecutar script de migración**:
-   ```bash
-   python migrar_db.py
-   ```
-
-2. **Verificar la migración**: El script te mostrará un resumen de lo que se creó:
-   - ✅ Tablas creadas
-   - ✅ Roles del sistema
-   - ✅ Sistemas por defecto
-   - ✅ Usuario administrador inicial
-   - ✅ Índices de numeración
-
-3. **Verificar en phpMyAdmin**: Accede a `http://localhost:8080/phpmyadmin` y verifica que la base de datos `erp_bacs` tenga todas las tablas
-
-**Tablas que se crean automáticamente:**
-- `user` - Gestión de usuarios del sistema
-- `rol` - Roles y permisos
-- `cliente` - Información de clientes
-- `sede` - Sedes de los clientes
-- `sistema` - Catálogo de sistemas tecnológicos
-- `incidencia` - Registro de incidencias
-- `indice` - Sistema de numeración automática
-- `plantilla_informe` - Plantillas para generación de informes
-
-**Datos iniciales creados:**
-- **Roles**: Administrador, Coordinador, Técnico, Usuario
-- **Sistemas**: CCTV, Control de Acceso, Alarmas, Redes, etc.
-- **Usuario administrador**: Con las credenciales de tu archivo `.env`
-- **Índices**: Para numeración automática de incidencias e informes
-
-**Si hay errores durante la migración:**
-1. Verifica que MySQL esté ejecutándose
-2. Verifica que la base de datos `erp_bacs` exista
-3. Verifica que las credenciales en `.env` sean correctas
-4. Verifica que el puerto de MySQL sea 3306 (no 8080)
-
-#### 5. Configurar Variables de Entorno
+#### 3. Configurar Variables de Entorno
 
 1. Copia el archivo `env_example.txt` y renómbralo a `.env`
 2. Edita el archivo `.env` con tus datos de conexión:
 
-**Configuración estándar (puerto MySQL 3306):**
 ```env
 # Configuración de la base de datos
 DB_HOST=localhost
@@ -114,41 +97,37 @@ INITIAL_USER_EMAIL=admin@tuempresa.com
 INITIAL_USER_PASSWORD=tu_contraseña_segura_aqui
 ```
 
-**Configuración con phpMyAdmin en puerto 8080:**
-```env
-# Configuración de la base de datos (puerto MySQL 3306, phpMyAdmin en 8080)
-DB_HOST=localhost
-DB_USER=tu_usuario_mysql
-DB_PASSWORD=tu_contraseña_mysql
-DB_NAME=erp_bacs
+#### 4. Configurar la Base de Datos MySQL
 
-# Configuración de la aplicación
-SECRET_KEY=tu_clave_secreta_muy_segura_aqui_2024
-FLASK_ENV=development
-FLASK_DEBUG=True
+1. Abre MySQL Workbench, phpMyAdmin o tu cliente MySQL preferido
+2. Crea una nueva base de datos llamada `erp_bacs`:
+   ```sql
+   CREATE DATABASE erp_bacs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
 
-# Usuario inicial del sistema (administrador)
-INITIAL_USER_EMAIL=admin@tuempresa.com
-INITIAL_USER_PASSWORD=tu_contraseña_segura_aqui
+#### 5. Migración de la Base de Datos
+
+```bash
+# Ejecutar script de migración
+python migrar_db.py
 ```
 
-**Notas importantes:**
-- El puerto de phpMyAdmin (8080) es solo para la interfaz web de administración
-- El puerto de MySQL sigue siendo 3306 por defecto
-- Si tu MySQL está en un puerto diferente, agrega `:PUERTO` al final del `DB_HOST` (ej: `localhost:3307`)
-- Asegúrate de que el archivo `.env` esté en tu `.gitignore` para no subir credenciales a GitHub
+**Lo que hace la migración:**
+- ✅ Crea todas las tablas del sistema
+- ✅ Crea roles del sistema (Administrador, Coordinador, Técnico, Usuario)
+- ✅ Crea sistemas por defecto (CCTV, Control de Acceso, Alarmas, etc.)
+- ✅ Crea el usuario administrador inicial
+- ✅ Configura índices de numeración automática
 
-**Configuración específica para phpMyAdmin en puerto 8080:**
-- **Acceso a phpMyAdmin**: `http://localhost:8080/phpmyadmin`
-- **Configuración del .env**: NO cambies el puerto en DB_HOST, sigue siendo 3306
-- **Ejemplo de configuración correcta**:
-  ```env
-  DB_HOST=localhost          # Puerto 3306 (MySQL)
-  DB_USER=tu_usuario_mysql
-  DB_PASSWORD=tu_contraseña_mysql
-  DB_NAME=erp_bacs
-  ```
-- **Para acceder a phpMyAdmin**: Usa el puerto 8080 solo en el navegador, no en la configuración de la aplicación
+**Tablas que se crean:**
+- `user` - Gestión de usuarios del sistema
+- `rol` - Roles y permisos
+- `cliente` - Información de clientes
+- `sede` - Sedes de los clientes
+- `sistema` - Catálogo de sistemas tecnológicos
+- `incidencia` - Registro de incidencias
+- `indice` - Sistema de numeración automática
+- `plantilla_informe` - Plantillas para generación de informes
 
 #### 6. Ejecutar el Sistema
 
@@ -163,385 +142,203 @@ python ejecutar_app.py
 2. Ve a la dirección: `http://localhost:5000`
 3. Inicia sesión con las credenciales configuradas en el archivo `.env`
 
-#### 8. Acceso a phpMyAdmin (Opcional)
+## 🔧 Solución de Problemas
 
-Si tienes phpMyAdmin instalado y configurado en el puerto 8080:
+### Error: "Import reportlab not found"
 
-1. Abre tu navegador web
-2. Ve a la dirección: `http://localhost:8080/phpmyadmin`
-3. Inicia sesión con las mismas credenciales de MySQL configuradas en tu `.env`
-4. Selecciona la base de datos `erp_bacs` para ver las tablas creadas automáticamente
+**Causa**: ReportLab no está instalado correctamente
 
-#### 9. Solución de Problemas Comunes
+**Solución**:
+```bash
+# Verificar entorno virtual activado
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
 
-**Error: "Table 'erp_bacs.user' doesn't exist"**
-- **Causa**: No se ejecutó la migración de la base de datos
-- **Solución**: Ejecuta `python migrar_db.py` antes de usar la aplicación
+# Reinstalar ReportLab
+pip uninstall reportlab
+pip install reportlab==4.0.4
 
-**Error: "'Engine' object has no attribute 'execute'"**
-- **Causa**: Problema de compatibilidad con SQLAlchemy
-- **Solución**: Usa el script `migrar_db.py` en lugar de la función init_db()
+# Verificar instalación
+python -c "import reportlab; print('ReportLab version:', reportlab.Version)"
+```
 
-**Error de conexión a MySQL**
-- **Causa**: MySQL no está ejecutándose o credenciales incorrectas
-- **Solución**: 
-  1. Verifica que MySQL esté ejecutándose
-  2. Verifica las credenciales en el archivo `.env`
-  3. Verifica que la base de datos `erp_bacs` exista
+### Error: "Import PIL not found"
 
-**Error: "Access denied for user"**
-- **Causa**: Credenciales incorrectas o usuario sin permisos
-- **Solución**: 
-  1. Verifica usuario y contraseña en `.env`
-  2. Asegúrate de que el usuario tenga permisos en la base de datos `erp_bacs`
+**Causa**: Pillow no está instalado correctamente
 
-**phpMyAdmin no carga en puerto 8080**
-- **Causa**: phpMyAdmin no está configurado o no está ejecutándose
-- **Solución**: 
-  1. Verifica que phpMyAdmin esté instalado y configurado
-  2. Verifica que el servidor web (Apache/Nginx) esté ejecutándose
-  3. Accede directamente a MySQL con MySQL Workbench o línea de comandos
+**Solución**:
+```bash
+pip uninstall Pillow
+pip install Pillow==11.3.0
 
-## 📊 Análisis de Requerimientos del Sistema
+# Verificar instalación
+python -c "import PIL; print('Pillow version:', PIL.__version__)"
+```
 
-### Requerimientos Funcionales
+### Error: "Table 'erp_bacs.user' doesn't exist"
 
-#### 1. Gestión de Usuarios
-- **Registro de usuarios**: Sistema completo de registro con validación de datos
-- **Autenticación**: Login seguro con hash de contraseñas
-- **Roles y permisos**: Sistema de roles (Administrador, Técnico, Usuario)
-- **Gestión de perfiles**: Edición de datos personales y profesionales
+**Causa**: No se ejecutó la migración de la base de datos
 
-#### 2. Gestión de Clientes
-- **Registro de clientes**: Información completa de empresas cliente
-- **Gestión de sedes**: Cada cliente puede tener múltiples sedes
-- **Datos de contacto**: Información detallada de contactos principales
-- **Estado activo/inactivo**: Control de clientes activos en el sistema
+**Solución**:
+```bash
+python migrar_db.py
+```
 
-#### 3. Gestión de Incidencias
-- **Creación de incidencias**: Formulario completo con todos los datos necesarios
-- **Numeración automática**: Sistema de índices para numeración única
-- **Asignación de técnicos**: Asignación automática o manual de técnicos
-- **Estados de incidencia**: Seguimiento del progreso (Abierta, En Proceso, Cerrada)
-- **Adjuntos**: Subida de archivos relacionados con la incidencia
+### Error de conexión a MySQL
 
-#### 4. Gestión de Sistemas
-- **Catálogo de sistemas**: Registro de todos los sistemas tecnológicos
-- **Categorización**: Organización por tipos de sistemas
-- **Estado activo/inactivo**: Control de sistemas en uso
+**Causa**: MySQL no está ejecutándose o credenciales incorrectas
 
-#### 5. Generación de Informes
-- **Informes estructurados**: Generación de PDFs con datos de incidencias
-- **Plantillas personalizables**: Sistema de plantillas para diferentes tipos de informes
-- **Exportación**: Descarga de informes en formato PDF
+**Solución**:
+1. Verifica que MySQL esté ejecutándose
+2. Verifica las credenciales en el archivo `.env`
+3. Verifica que la base de datos `erp_bacs` exista
 
-### Requerimientos No Funcionales
+### Error: "image file is truncated" en firmas
 
-#### 1. Seguridad
-- **Autenticación obligatoria**: Todas las rutas protegidas requieren login
-- **Hash de contraseñas**: Uso de bcrypt para seguridad de contraseñas
-- **Validación de datos**: Validación tanto en frontend como backend
-- **Sanitización de archivos**: Validación de tipos y tamaños de archivos
+**Causa**: Imagen de firma corrupta o incompleta
 
-#### 2. Usabilidad
-- **Interfaz intuitiva**: Diseño limpio y fácil de usar
-- **Navegación clara**: Menú de navegación organizado por módulos
-- **Responsive design**: Adaptable a diferentes tamaños de pantalla
-- **Mensajes informativos**: Feedback claro al usuario sobre acciones realizadas
+**Solución**: Este error ahora está manejado automáticamente por el sistema:
+- El sistema intentará múltiples métodos de procesamiento
+- Si todo falla, creará una imagen placeholder
+- Los datos del firmante siempre se mostrarán
 
-#### 3. Rendimiento
-- **Carga rápida**: Optimización de consultas a base de datos
-- **Paginación**: Manejo eficiente de grandes volúmenes de datos
-- **Caché de archivos**: Servicio optimizado de archivos estáticos
+### Configuración de VS Code/PyCharm
 
-#### 4. Escalabilidad
-- **Arquitectura modular**: Separación clara de responsabilidades
-- **Base de datos relacional**: Estructura normalizada para crecimiento
-- **API REST**: Preparado para futuras integraciones
+#### Para VS Code:
+1. Abre la paleta de comandos (`Ctrl+Shift+P`)
+2. Escribe "Python: Select Interpreter"
+3. Selecciona el intérprete del entorno virtual: `./venv/Scripts/python.exe`
 
-### Variables del Sistema
+#### Para PyCharm:
+1. Ve a File → Settings → Project → Python Interpreter
+2. Selecciona el intérprete del entorno virtual
 
-#### Variables de Configuración
-- `SECRET_KEY`: Clave secreta para sesiones seguras
-- `SQLALCHEMY_DATABASE_URI`: Cadena de conexión a MySQL
-- `UPLOAD_FOLDER`: Directorio para archivos subidos
-- `MAX_CONTENT_LENGTH`: Límite de tamaño de archivos (16MB)
+## 📊 Características del Sistema
 
-#### Variables de Entorno
-- `DB_HOST`: Servidor de base de datos
-- `DB_USER`: Usuario de base de datos
-- `DB_PASSWORD`: Contraseña de base de datos
-- `DB_NAME`: Nombre de la base de datos
-- `INITIAL_USER_EMAIL`: Email del usuario administrador inicial
-- `INITIAL_USER_PASSWORD`: Contraseña del usuario administrador inicial
+### Gestión de Usuarios
+- ✅ Sistema completo de registro con validación
+- ✅ Login seguro con hash de contraseñas
+- ✅ Roles y permisos (Administrador, Técnico, Usuario)
+- ✅ Gestión de perfiles
 
-### Permisos y Roles
+### Gestión de Clientes
+- ✅ Registro completo de empresas cliente
+- ✅ Gestión de múltiples sedes por cliente
+- ✅ Información detallada de contactos
+- ✅ Control de estado activo/inactivo
 
-#### Rol Administrador
-- Acceso completo a todas las funcionalidades
-- Gestión de usuarios, roles y permisos
-- Configuración del sistema
-- Acceso a todos los informes y estadísticas
+### Gestión de Incidencias
+- ✅ Creación de incidencias con formulario completo
+- ✅ Numeración automática única
+- ✅ Asignación de técnicos
+- ✅ Estados de seguimiento (Abierta, En Proceso, Cerrada)
+- ✅ Sistema de adjuntos
 
-#### Rol Técnico
-- Gestión de incidencias asignadas
-- Actualización de estados de incidencias
-- Acceso a información de clientes y sistemas
-- Generación de informes técnicos
+### Gestión de Sistemas
+- ✅ Catálogo de sistemas tecnológicos
+- ✅ Categorización y organización
+- ✅ Control de estado activo/inactivo
 
-#### Rol Usuario
-- Creación de nuevas incidencias
-- Consulta de incidencias propias
-- Acceso limitado a información de clientes
+### Generación de Informes
+- ✅ Informes estructurados en PDF
+- ✅ Plantillas personalizables
+- ✅ Exportación de datos
+- ✅ **Sistema de firmas digitales** con canvas táctil
+- ✅ **Datos del firmante** (nombre, documento, empresa, cargo)
 
-### Módulos del Sistema
+### Formularios Dinámicos
+- ✅ **Creación de formularios personalizados**
+- ✅ **Campos de firma digital** con mouse y táctil
+- ✅ **Campos de fotos múltiples**
+- ✅ **Campos de texto, fechas, selección**
+- ✅ **Generación automática de PDFs**
+- ✅ **Datos del firmante incluidos en PDFs**
 
-#### 1. Módulo de Autenticación
-- Login/logout de usuarios
-- Gestión de sesiones
-- Protección de rutas
+## 🛠️ Tecnologías Utilizadas
 
-#### 2. Módulo de Gestión de Usuarios
-- CRUD completo de usuarios
-- Asignación de roles
-- Gestión de perfiles
+### Backend
+- **Python 3.8+** - Lenguaje principal
+- **Flask 2.3.3** - Framework web
+- **SQLAlchemy 3.0.5** - ORM para base de datos
+- **MySQL** - Base de datos relacional
+- **ReportLab 4.0.4** - Generación de PDFs
+- **Pillow 11.3.0** - Procesamiento de imágenes
 
-#### 3. Módulo de Gestión de Clientes
-- CRUD de clientes
-- Gestión de sedes por cliente
-- Información de contacto
+### Frontend
+- **HTML5 + CSS3 + JavaScript** - Interfaz de usuario
+- **Canvas API** - Firmas digitales
+- **Responsive Design** - Adaptable a móviles
 
-#### 4. Módulo de Gestión de Incidencias
-- Creación y edición de incidencias
-- Asignación de técnicos
-- Seguimiento de estados
-- Gestión de adjuntos
+### Seguridad
+- **Flask-Login** - Autenticación
+- **bcrypt** - Hash de contraseñas
+- **Flask-WTF** - Protección CSRF
+- **Validación de archivos** - Sanitización de uploads
 
-#### 5. Módulo de Gestión de Sistemas
-- Catálogo de sistemas tecnológicos
-- Categorización y organización
-
-#### 6. Módulo de Informes
-- Generación de PDFs
-- Plantillas personalizables
-- Exportación de datos
-
-## 🛠️ Metodología y Tecnologías Utilizadas
-
-### Lenguaje de Programación: Python
-
-**¿Por qué Python?**
-- **Compatibilidad empresarial**: La empresa cliente (BACS) tiene múltiples desarrollos existentes en Python que desea integrar en esta plataforma a futuro
-- **Simplicidad**: Sintaxis clara y fácil de mantener
-- **Ecosistema robusto**: Amplia gama de librerías disponibles
-- **Escalabilidad**: Ideal para aplicaciones empresariales
-- **Comunidad activa**: Gran soporte y documentación
-
-### Framework Web: Flask
-
-**¿Por qué Flask?**
-- **Flexibilidad**: Framework minimalista que permite personalización total
-- **Rápido desarrollo**: Ideal para prototipos y aplicaciones medianas
-- **Extensibilidad**: Fácil integración con otras librerías
-- **Documentación excelente**: Curva de aprendizaje suave
-- **Comunidad activa**: Gran cantidad de extensiones disponibles
-
-### Base de Datos: MySQL
-
-**¿Por qué MySQL?**
-- **Confiabilidad**: Base de datos probada en entornos empresariales
-- **Rendimiento**: Excelente para aplicaciones web
-- **Escalabilidad**: Soporta grandes volúmenes de datos
-- **Compatibilidad**: Amplio soporte en hosting y servidores
-- **Herramientas**: Excelentes herramientas de administración
-
-### ORM: SQLAlchemy
-
-**¿Por qué SQLAlchemy?**
-- **Abstracción**: Permite trabajar con objetos Python en lugar de SQL directo
-- **Portabilidad**: Fácil migración entre diferentes bases de datos
-- **Relaciones**: Manejo automático de relaciones entre tablas
-- **Migraciones**: Sistema robusto de migraciones de esquema
-- **Performance**: Optimización automática de consultas
-
-### Autenticación: Flask-Login
-
-**¿Por qué Flask-Login?**
-- **Simplicidad**: Manejo fácil de sesiones de usuario
-- **Seguridad**: Protección automática de rutas
-- **Flexibilidad**: Personalizable según necesidades
-- **Integración**: Perfecta integración con Flask
-
-### Formularios: Flask-WTF + WTForms
-
-**¿Por qué Flask-WTF + WTForms?**
-- **Validación**: Validación automática de formularios
-- **Seguridad**: Protección CSRF integrada
-- **Templates**: Integración perfecta con Jinja2
-- **Flexibilidad**: Campos personalizables y validadores
-
-### Generación de PDFs: ReportLab
-
-**¿Por qué ReportLab?**
-- **Profesional**: Generación de PDFs de alta calidad
-- **Flexibilidad**: Control total sobre diseño y contenido
-- **Imágenes**: Soporte completo para imágenes y gráficos
-- **Tablas**: Generación avanzada de tablas y datos estructurados
-
-### Procesamiento de Imágenes: Pillow (PIL)
-
-**¿Por qué Pillow?**
-- **Versatilidad**: Soporte para múltiples formatos de imagen
-- **Optimización**: Redimensionamiento y compresión de imágenes
-- **Integración**: Perfecta integración con ReportLab
-- **Estabilidad**: Librería madura y confiable
-
-### Seguridad: Werkzeug + bcrypt
-
-**¿Por qué Werkzeug + bcrypt?**
-- **Hash seguro**: Algoritmo bcrypt para contraseñas
-- **Utilidades**: Funciones de seguridad integradas
-- **Validación**: Validación de archivos y datos
-- **Estándar**: Librerías estándar en el ecosistema Flask
-
-### Frontend: HTML5 + CSS3 + JavaScript
-
-**¿Por qué tecnologías web estándar?**
-- **Compatibilidad**: Funciona en todos los navegadores modernos
-- **Mantenimiento**: Fácil de mantener y actualizar
-- **Performance**: Carga rápida y responsiva
-- **Accesibilidad**: Cumple estándares web
-
-### Template Engine: Jinja2
-
-**¿Por qué Jinja2?**
-- **Integración**: Motor de templates oficial de Flask
-- **Flexibilidad**: Sintaxis potente y expresiva
-- **Herencia**: Sistema de herencia de templates
-- **Filtros**: Amplia gama de filtros disponibles
-
-### Gestión de Dependencias: pip + requirements.txt
-
-**¿Por qué pip + requirements.txt?**
-- **Simplicidad**: Gestión simple de dependencias
-- **Reproducibilidad**: Versiones exactas para entornos consistentes
-- **Estándar**: Herramienta estándar de Python
-- **Virtualenv**: Compatible con entornos virtuales
-
-### Estructura del Proyecto
+## 📁 Estructura del Proyecto
 
 ```
 erp_bacs/
-├── app.py                 # Aplicación principal Flask
-├── config.py              # Configuración del sistema
-├── ejecutar_app.py        # Script de ejecución
-├── requirements.txt       # Dependencias Python
-├── env_example.txt        # Ejemplo de variables de entorno
-├── static/                # Archivos estáticos (CSS, JS, imágenes)
+├── app.py                     # Aplicación principal Flask
+├── config.py                  # Configuración del sistema
+├── ejecutar_app.py           # Script de ejecución
+├── migrar_db.py              # Migración de base de datos
+├── setup_completo.py         # Setup automático completo
+├── requirements.txt          # Dependencias Python
+├── env_example.txt           # Ejemplo de variables de entorno
+├── static/                   # Archivos estáticos
 │   └── css/
-│       └── style.css      # Estilos principales
-├── templates/             # Plantillas HTML
-│   ├── base.html          # Plantilla base
-│   ├── login.html         # Página de login
-│   ├── dashboard.html     # Panel principal
-│   ├── usuarios.html      # Gestión de usuarios
-│   ├── clientes.html      # Gestión de clientes
-│   ├── incidencias.html   # Gestión de incidencias
-│   └── ...                # Otras plantillas
-├── uploads/               # Archivos subidos por usuarios
-│   └── logos/             # Logos de clientes
-├── files/                 # Archivos del sistema
-│   └── logo.jpg           # Logo principal
-└── venv/                  # Entorno virtual Python
+│       └── style.css         # Estilos principales
+├── templates/                # Plantillas HTML
+│   ├── base.html             # Plantilla base
+│   ├── login.html            # Página de login
+│   ├── dashboard.html        # Panel principal
+│   ├── diligenciar_formulario.html  # Formularios con firmas
+│   └── ...                   # Otras plantillas
+├── uploads/                  # Archivos subidos
+│   ├── logos/                # Logos de clientes
+│   └── formularios/          # PDFs de formularios
+└── venv/                     # Entorno virtual Python
 ```
 
-### Patrones de Diseño Utilizados
+## 🚀 Comandos Útiles
 
-#### 1. Modelo-Vista-Controlador (MVC)
-- **Modelos**: Clases SQLAlchemy para representar datos
-- **Vistas**: Templates HTML con Jinja2
-- **Controladores**: Rutas Flask que manejan la lógica
+### Desarrollo
+```bash
+# Activar entorno virtual
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
 
-#### 2. Factory Pattern
-- Configuración centralizada en `config.py`
-- Inicialización de extensiones Flask
+# Ejecutar aplicación
+python ejecutar_app.py
 
-#### 3. Repository Pattern
-- Acceso a datos encapsulado en modelos SQLAlchemy
-- Separación entre lógica de negocio y acceso a datos
+# Ejecutar migración
+python migrar_db.py
 
-#### 4. Decorator Pattern
-- `@login_required` para protección de rutas
-- `@app.route` para definición de endpoints
+# Setup completo
+python setup_completo.py
+```
 
-### Metodología de Desarrollo
+### Mantenimiento
+```bash
+# Actualizar dependencias
+pip install --upgrade -r requirements.txt
 
-#### 1. Desarrollo Iterativo
-- Prototipado rápido con Flask
-- Iteraciones basadas en feedback del cliente
-- Desarrollo incremental de funcionalidades
+# Verificar dependencias
+pip list
 
-#### 2. Desarrollo Orientado a Objetos
-- Modelos de datos como clases Python
-- Encapsulación de lógica de negocio
-- Herencia y polimorfismo donde corresponde
+# Limpiar caché
+pip cache purge
+```
 
-#### 3. Principios SOLID
-- **Single Responsibility**: Cada clase tiene una responsabilidad específica
-- **Open/Closed**: Extensible sin modificar código existente
-- **Liskov Substitution**: Interfaces consistentes
-- **Interface Segregation**: Interfaces específicas
-- **Dependency Inversion**: Dependencias de abstracciones
+### Base de Datos
+```bash
+# Backup de base de datos
+mysqldump -u usuario -p erp_bacs > backup_erp_bacs.sql
 
-#### 4. Clean Code
-- Nombres descriptivos para variables y funciones
-- Funciones pequeñas y específicas
-- Comentarios donde es necesario
-- Código autodocumentado
-
-### Consideraciones de Seguridad
-
-#### 1. Autenticación y Autorización
-- Hash seguro de contraseñas con bcrypt
-- Sesiones seguras con Flask-Login
-- Protección CSRF en formularios
-
-#### 2. Validación de Datos
-- Validación en frontend (JavaScript)
-- Validación en backend (Python/WTForms)
-- Sanitización de entradas de usuario
-
-#### 3. Gestión de Archivos
-- Validación de tipos de archivo
-- Límites de tamaño
-- Nombres de archivo seguros
-
-#### 4. Base de Datos
-- Consultas parametrizadas (SQLAlchemy ORM)
-- Validación de datos a nivel de modelo
-- Índices para optimización
-
-### Escalabilidad y Mantenimiento
-
-#### 1. Arquitectura Modular
-- Separación clara de responsabilidades
-- Fácil adición de nuevas funcionalidades
-- Reutilización de código
-
-#### 2. Base de Datos Normalizada
-- Estructura relacional optimizada
-- Índices para consultas frecuentes
-- Migraciones para cambios de esquema
-
-#### 3. Código Documentado
-- Comentarios en funciones críticas
-- Docstrings en clases principales
-- README completo para nuevos desarrolladores
-
-#### 4. Testing y Debugging
-- Modo debug de Flask para desarrollo
-- Logging integrado para monitoreo
-- Manejo de errores con try/catch
+# Restaurar backup
+mysql -u usuario -p erp_bacs < backup_erp_bacs.sql
+```
 
 ## 📞 Soporte y Contacto
 

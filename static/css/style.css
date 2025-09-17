@@ -8,6 +8,224 @@
     --border-color: #dee2e6;
 }
 
+/* Iconos para botones */
+.icon-plus::before { content: "➕"; }
+.icon-edit::before { content: "✏️"; }
+.icon-trash::before { content: "🗑️"; }
+.icon-save::before { content: "💾"; }
+.icon-check::before { content: "✅"; }
+.icon-arrow-left::before { content: "←"; }
+.icon-arrow-right::before { content: "→"; }
+.icon-refresh::before { content: "🔄"; }
+.icon-settings::before { content: "⚙️"; }
+.icon-file-text::before { content: "📄"; }
+.icon-plus-circle::before { content: "⭕"; }
+.icon-info::before { content: "ℹ️"; }
+.icon-calendar::before { content: "📅"; }
+.icon-user::before { content: "👤"; }
+.icon-check-circle::before { content: "✅"; }
+.icon-plus::before,
+.icon-edit::before,
+.icon-trash::before,
+.icon-save::before,
+.icon-check::before,
+.icon-arrow-left::before,
+.icon-arrow-right::before,
+.icon-refresh::before,
+.icon-settings::before,
+.icon-file-text::before,
+.icon-plus-circle::before,
+.icon-info::before,
+.icon-calendar::before,
+.icon-user::before,
+.icon-check-circle::before {
+    margin-right: 5px;
+}
+
+.icon-camera::before { content: "📷"; }
+.icon-close::before { content: "✕"; }
+.icon-download::before { content: "⬇️"; }
+
+/* Estilos para Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 15% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.25rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.modal-close:hover {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body p {
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.text-warning {
+    color: #856404 !important;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.4em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+}
+
+.badge-primary {
+    color: #fff;
+    background-color: #007bff;
+}
+
+.badge-secondary {
+    color: #fff;
+    background-color: #6c757d;
+}
+
+.badge-success {
+    color: #fff;
+    background-color: #28a745;
+}
+
+.badge-danger {
+    color: #fff;
+    background-color: #dc3545;
+}
+
+.badge-warning {
+    color: #212529;
+    background-color: #ffc107;
+}
+
+.badge-info {
+    color: #fff;
+    background-color: #17a2b8;
+}
+
+/* Botones de acción en grupos */
+.btn-group {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.btn-group .btn {
+    margin: 0;
+}
+
+.btn-outline-success {
+    color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-outline-success:hover {
+    color: #fff;
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+/* Texto de advertencia */
+.text-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
 * {
     margin: 0;
     padding: 0;

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Formulario - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Nuevo Formulario</h1>
+        <p>Crea una nueva plantilla de formulario</p>
+    </div>
+
+    <div class="form-container">
+        <form method="POST" class="form">
+            <div class="form-group">
+                <label for="nombre" class="form-label">Nombre del Formulario *</label>
+                <input type="text" id="nombre" name="nombre" class="form-control" required 
+                       placeholder="Ej: Checklist de Visita de Proveedores">
+                <small class="form-text">Nombre descriptivo que identifique el propósito del formulario</small>
+            </div>
+
+            <div class="form-group">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <textarea id="descripcion" name="descripcion" class="form-control" rows="3" 
+                          placeholder="Describe el propósito y uso de este formulario"></textarea>
+                <small class="form-text">Información adicional sobre cuándo y cómo usar este formulario</small>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('formularios') }}" class="btn btn-secondary">
+                    <i class="icon-arrow-left"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="icon-plus"></i> Crear Formulario
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="info-box">
+        <h4><i class="icon-info"></i> Información</h4>
+        <p>Después de crear el formulario, podrás:</p>
+        <ul>
+            <li>Agregar diferentes tipos de campos (texto, fechas, selecciones, etc.)</li>
+            <li>Configurar campos obligatorios</li>
+            <li>Crear menús desplegables con opciones personalizadas</li>
+            <li>Agregar campos para firmas digitales y fotos</li>
+            <li>Establecer el orden de los campos</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.form-container {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-box {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.info-box h4 {
+    margin-top: 0;
+    color: #495057;
+}
+
+.info-box ul {
+    margin-bottom: 0;
+}
+
+.info-box li {
+    margin-bottom: 5px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Descargar PDF - {{ formulario_nombre }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📄 PDF Generado</h1>
+        <p>Tu formulario ha sido procesado exitosamente</p>
+    </div>
+
+    <div class="download-container">
+        <div class="download-card">
+            <div class="download-icon">
+                <i class="icon-file-text"></i>
+            </div>
+            
+            <h2>{{ formulario_nombre }}</h2>
+            <p class="download-info">
+                <strong>Fecha:</strong> {{ fecha }}<br>
+                <strong>Estado:</strong> Completado
+            </p>
+            
+            <div class="download-actions">
+                <button id="downloadBtn" class="btn btn-primary btn-lg">
+                    <i class="icon-download"></i> Descargar PDF
+                </button>
+                
+                <a href="{{ url_for('formularios') }}" class="btn btn-secondary btn-lg">
+                    <i class="icon-arrow-left"></i> Volver a Formularios
+                </a>
+            </div>
+            
+            <div class="download-help">
+                <h4>📱 Instrucciones para móviles:</h4>
+                <ul>
+                    <li><strong>El PDF se descargará automáticamente en 2 segundos</strong></li>
+                    <li>Si no se descarga, haz clic en "Descargar PDF"</li>
+                    <li>Puedes encontrarlo en tu carpeta de descargas</li>
+                    <li>Ábrelo con cualquier visor de PDF</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.download-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    padding: 20px;
+}
+
+.download-card {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+}
+
+.download-icon {
+    font-size: 4rem;
+    color: var(--primary-green);
+    margin-bottom: 20px;
+}
+
+.download-card h2 {
+    color: var(--text-dark);
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.download-info {
+    background: var(--light-gray);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    color: var(--text-dark);
+}
+
+.download-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.download-actions .btn {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+}
+
+.download-help {
+    background: #e8f5e8;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: left;
+    border-left: 4px solid var(--primary-green);
+}
+
+.download-help h4 {
+    color: var(--dark-green);
+    margin-bottom: 15px;
+}
+
+.download-help ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.download-help li {
+    margin-bottom: 8px;
+    color: var(--text-dark);
+}
+
+@media (max-width: 768px) {
+    .download-card {
+        padding: 30px 20px;
+    }
+    
+    .download-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadBtn = document.getElementById('downloadBtn');
+    
+    // Función para descargar el PDF
+    function descargarPDF() {
+        try {
+            console.log('Iniciando descarga de PDF...');
+            
+            // Crear enlace de descarga
+            const link = document.createElement('a');
+            link.href = '{{ pdf_url }}';
+            link.download = '{{ formulario_nombre }}.pdf';
+            link.target = '_blank'; // Abrir en nueva pestaña para móviles
+            
+            // Agregar al DOM temporalmente
+            document.body.appendChild(link);
+            
+            // Simular clic
+            link.click();
+            
+            // Remover del DOM
+            document.body.removeChild(link);
+            
+            // Cambiar texto del botón
+            downloadBtn.innerHTML = '<i class="icon-check"></i> Descarga Iniciada';
+            downloadBtn.classList.remove('btn-primary');
+            downloadBtn.classList.add('btn-success');
+            downloadBtn.disabled = true;
+            
+            console.log('Descarga iniciada exitosamente');
+            
+            // Mostrar mensaje de éxito
+            setTimeout(() => {
+                const successMsg = document.createElement('div');
+                successMsg.className = 'alert alert-success mt-3';
+                successMsg.innerHTML = '<i class="icon-check"></i> ¡PDF descargado exitosamente!';
+                downloadBtn.parentNode.appendChild(successMsg);
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Error en la descarga:', error);
+            
+            // Mostrar mensaje de error
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'alert alert-danger mt-3';
+            errorMsg.innerHTML = '<i class="icon-exclamation"></i> Error al descargar PDF. Intenta hacer clic en el botón manualmente.';
+            downloadBtn.parentNode.appendChild(errorMsg);
+        }
+    }
+    
+    // Descarga automática después de 2 segundos
+    setTimeout(() => {
+        if (!downloadBtn.disabled) {
+            console.log('Iniciando descarga automática...');
+            descargarPDF();
+        }
+    }, 2000);
+    
+    // También intentar descarga inmediata si es posible
+    setTimeout(() => {
+        if (!downloadBtn.disabled) {
+            console.log('Intento de descarga inmediata...');
+            descargarPDF();
+        }
+    }, 500);
+    
+    // Descarga manual al hacer clic
+    downloadBtn.addEventListener('click', descargarPDF);
+    
+    // Detectar si es iOS y mostrar instrucciones específicas
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    if (isIOS) {
+        const helpSection = document.querySelector('.download-help');
+        const iosInstructions = document.createElement('div');
+        iosInstructions.innerHTML = `
+            <h4>🍎 Instrucciones para iOS:</h4>
+            <ul>
+                <li>El PDF se descargará automáticamente</li>
+                <li>Si no se descarga, haz clic en "Descargar PDF"</li>
+                <li>El archivo se abrirá en una nueva pestaña</li>
+                <li>Toca el ícono de compartir (cuadrado con flecha)</li>
+                <li>Selecciona "Guardar en Archivos" o "Compartir"</li>
+            </ul>
+        `;
+        helpSection.appendChild(iosInstructions);
+    } else if (isAndroid) {
+        const helpSection = document.querySelector('.download-help');
+        const androidInstructions = document.createElement('div');
+        androidInstructions.innerHTML = `
+            <h4>🤖 Instrucciones para Android:</h4>
+            <ul>
+                <li>El PDF se descargará automáticamente</li>
+                <li>Si no se descarga, haz clic en "Descargar PDF"</li>
+                <li>El archivo se guardará en tu carpeta de descargas</li>
+                <li>Puedes encontrarlo en la app "Archivos" o "Descargas"</li>
+            </ul>
+        `;
+        helpSection.appendChild(androidInstructions);
+    }
+});
+</script>
+{% endblock %}

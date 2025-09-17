@@ -1,0 +1,754 @@
+{% extends "base.html" %}
+
+{% block title %}Diligenciar: {{ formulario.nombre }} - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>{{ formulario.nombre }}</h1>
+        {% if formulario.descripcion %}
+        <p>{{ formulario.descripcion }}</p>
+        {% endif %}
+    </div>
+
+    <div class="form-container">
+        <form method="POST" enctype="multipart/form-data" class="form" id="formularioDiligenciar">
+            {% for campo in formulario.campos %}
+            <div class="form-group campo-formulario" data-campo-id="{{ campo.id }}" data-tipo="{{ campo.tipo_campo }}">
+                {% if campo.tipo_campo == 'texto_informativo' %}
+                    <!-- Campo informativo (solo texto) -->
+                    <div class="campo-informativo">
+                        <h4>{{ campo.titulo }}</h4>
+                        {% if campo.descripcion %}
+                        <p>{{ campo.descripcion }}</p>
+                        {% endif %}
+                    </div>
+                
+                {% elif campo.tipo_campo == 'texto' %}
+                    <!-- Campo de texto -->
+                    <label for="campo_{{ campo.id }}" class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <input type="text" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" 
+                           class="form-control" {% if campo.obligatorio %}required{% endif %}>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                
+                {% elif campo.tipo_campo == 'textarea' %}
+                    <!-- Área de texto -->
+                    <label for="campo_{{ campo.id }}" class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <textarea id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" 
+                              class="form-control" rows="4" {% if campo.obligatorio %}required{% endif %}></textarea>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                
+                {% elif campo.tipo_campo == 'fecha' %}
+                    <!-- Campo de fecha -->
+                    <label for="campo_{{ campo.id }}" class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <input type="date" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" 
+                           class="form-control" {% if campo.obligatorio %}required{% endif %}>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                
+                {% elif campo.tipo_campo == 'seleccion' %}
+                    <!-- Selección única -->
+                    <label for="campo_{{ campo.id }}" class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <select id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" 
+                            class="form-control" {% if campo.obligatorio %}required{% endif %}>
+                        <option value="">Selecciona una opción</option>
+                        {% if campo.configuracion %}
+                            {% set opciones = campo.configuracion|from_json %}
+                            {% if opciones.opciones %}
+                                {% for opcion in opciones.opciones %}
+                                <option value="{{ opcion }}">{{ opcion }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        {% endif %}
+                    </select>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                
+                {% elif campo.tipo_campo == 'seleccion_multiple' %}
+                    <!-- Selección múltiple con submenús -->
+                    <label class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <div class="seleccion-multiple-container">
+                        {% if campo.configuracion %}
+                            {% set config = campo.configuracion|from_json %}
+                            {% if config.menus %}
+                                {% for menu in config.menus %}
+                                <div class="menu-seleccion">
+                                    <h5>{{ menu.titulo }}</h5>
+                                    <select class="form-control menu-select" data-menu="{{ loop.index0 }}">
+                                        <option value="">Selecciona {{ menu.titulo }}</option>
+                                        {% for submenu in menu.submenus %}
+                                        <option value="{{ submenu.titulo }}" data-tipo="{{ submenu.tipo_campo }}">
+                                            {{ submenu.titulo }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="submenu-campos" data-menu="{{ loop.index0 }}"></div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                
+                {% elif campo.tipo_campo == 'firma' %}
+                    <!-- Campo de firma -->
+                    <label class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <div class="firma-container">
+                        <!-- Información del firmante -->
+                        <div class="firma-info-section">
+                            <h5>Información del Firmante</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="nombre_{{ campo.id }}" class="form-label">Nombre Completo *</label>
+                                        <input type="text" id="nombre_{{ campo.id }}" name="nombre_{{ campo.id }}" 
+                                               class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="documento_{{ campo.id }}" class="form-label">Documento de Identidad *</label>
+                                        <input type="text" id="documento_{{ campo.id }}" name="documento_{{ campo.id }}" 
+                                               class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="telefono_{{ campo.id }}" class="form-label">Teléfono</label>
+                                        <input type="tel" id="telefono_{{ campo.id }}" name="telefono_{{ campo.id }}" 
+                                               class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="empresa_{{ campo.id }}" class="form-label">Empresa *</label>
+                                        <input type="text" id="empresa_{{ campo.id }}" name="empresa_{{ campo.id }}" 
+                                               class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="cargo_{{ campo.id }}" class="form-label">Cargo *</label>
+                                        <input type="text" id="cargo_{{ campo.id }}" name="cargo_{{ campo.id }}" 
+                                               class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Área de firma -->
+                        <div class="firma-signature-section">
+                            <h5>Firma Digital</h5>
+                            <canvas id="canvas_{{ campo.id }}" class="firma-canvas" width="400" height="200"></canvas>
+                            <div class="firma-controls">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarFirma({{ campo.id }})">
+                                    <i class="icon-refresh"></i> Limpiar Firma
+                                </button>
+                            </div>
+                            <input type="hidden" id="firma_{{ campo.id }}" name="campo_{{ campo.id }}">
+                        </div>
+                    </div>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                
+                {% elif campo.tipo_campo == 'foto' %}
+                    <!-- Campo de fotos múltiples -->
+                    <label for="campo_{{ campo.id }}" class="form-label">
+                        {{ campo.titulo }}{% if campo.obligatorio %} *{% endif %}
+                    </label>
+                    <div class="foto-container">
+                        <div class="foto-input-group">
+                            <input type="file" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" 
+                                   class="form-control" accept="image/*" multiple 
+                                   {% if campo.obligatorio %}required{% endif %}>
+                            <div class="foto-input-info">
+                                <small class="text-muted">Puedes seleccionar múltiples fotos desde tu dispositivo</small>
+                            </div>
+                        </div>
+                        <div class="foto-actions">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirCamara({{ campo.id }})">
+                                <i class="icon-camera"></i> Tomar Foto
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarFotos({{ campo.id }})">
+                                <i class="icon-refresh"></i> Limpiar Todas
+                            </button>
+                        </div>
+                        <div class="fotos-preview" id="preview_{{ campo.id }}" style="display: none;">
+                            <div class="fotos-grid" id="grid_{{ campo.id }}"></div>
+                        </div>
+                    </div>
+                    {% if campo.descripcion %}
+                    <small class="form-text">{{ campo.descripcion }}</small>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="form-actions">
+                <a href="{{ url_for('formularios') }}" class="btn btn-secondary">
+                    <i class="icon-arrow-left"></i> Volver
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="icon-check"></i> Completar Formulario
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.campo-informativo {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.campo-informativo h4 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+.seleccion-multiple-container {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.menu-seleccion {
+    margin-bottom: 15px;
+}
+
+.menu-seleccion h5 {
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.submenu-campos {
+    margin-top: 10px;
+    padding-left: 20px;
+    border-left: 2px solid #dee2e6;
+}
+
+.firma-container {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    background: white;
+}
+
+.firma-info-section {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.firma-info-section h5 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.firma-signature-section {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    background: white;
+}
+
+.firma-signature-section h5 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.firma-canvas {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: crosshair;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.firma-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.foto-container {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.foto-input-group {
+    margin-bottom: 10px;
+}
+
+.foto-input-info {
+    margin-top: 5px;
+}
+
+.foto-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.fotos-preview {
+    margin-top: 15px;
+}
+
+.fotos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.foto-item {
+    position: relative;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.foto-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+}
+
+.foto-item .foto-remove {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(220, 53, 69, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.foto-item .foto-remove:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+.foto-item .foto-info {
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 11px;
+    text-align: center;
+}
+
+.foto-item .foto-info small {
+    display: block;
+    margin: 1px 0;
+}
+
+@media (max-width: 768px) {
+    .firma-canvas {
+        width: 100%;
+        height: 150px;
+    }
+    
+    .firma-controls {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+// Variables globales para las firmas
+let firmas = {};
+
+// Inicializar canvas de firmas
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarFirmas();
+    inicializarPreviewsFotos();
+    inicializarSeleccionMultiple();
+});
+
+function inicializarFirmas() {
+    document.querySelectorAll('.firma-canvas').forEach(canvas => {
+        const campoId = canvas.id.split('_')[1];
+        const ctx = canvas.getContext('2d');
+        
+        // Configurar canvas
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        let isDrawing = false;
+        
+        // Eventos del mouse
+        canvas.addEventListener('mousedown', function(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        });
+        
+        canvas.addEventListener('mousemove', function(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        });
+        
+        canvas.addEventListener('mouseup', function() {
+            isDrawing = false;
+            // Guardar firma automáticamente cuando se termina de dibujar
+            guardarFirma(campoId);
+        });
+        
+        // Eventos táctiles para dispositivos móviles
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        });
+        
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        });
+        
+        canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            isDrawing = false;
+            // Guardar firma automáticamente cuando se termina de dibujar
+            guardarFirma(campoId);
+        });
+        
+        firmas[campoId] = ctx;
+    });
+}
+
+function limpiarFirma(campoId) {
+    const canvas = document.getElementById(`canvas_${campoId}`);
+    const ctx = firmas[campoId];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    document.getElementById(`firma_${campoId}`).value = '';
+}
+
+function guardarFirma(campoId) {
+    const canvas = document.getElementById(`canvas_${campoId}`);
+    
+    // Verificar que el canvas no esté vacío
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    let isEmpty = true;
+    for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] !== 0) { // Alpha channel
+            isEmpty = false;
+            break;
+        }
+    }
+    
+    if (isEmpty) {
+        document.getElementById(`firma_${campoId}`).value = '';
+        console.log(`DEBUG: Canvas ${campoId} está vacío`);
+        return;
+    }
+    
+    // Capturar la firma con máxima calidad
+    const dataURL = canvas.toDataURL('image/png', 1.0);
+    
+    // Validar que la firma se capturó correctamente
+    if (dataURL && dataURL.length > 100) {
+        document.getElementById(`firma_${campoId}`).value = dataURL;
+        console.log(`DEBUG: Firma ${campoId} guardada exitosamente, tamaño: ${dataURL.length} caracteres`);
+    } else {
+        console.error(`DEBUG: Error guardando firma ${campoId}, dataURL muy corto: ${dataURL.length}`);
+        document.getElementById(`firma_${campoId}`).value = '';
+    }
+}
+
+function inicializarPreviewsFotos() {
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function(e) {
+            const campoId = this.id.split('_')[1];
+            const files = Array.from(e.target.files);
+            
+            // Verificar si este cambio viene de la cámara (tiene el atributo capture)
+            const esDeCamara = this.hasAttribute('capture');
+            
+            if (files.length > 0) {
+                // Obtener fotos existentes del campo (almacenadas en una variable global)
+                if (!window.fotosPorCampo) {
+                    window.fotosPorCampo = {};
+                }
+                if (!window.fotosPorCampo[campoId]) {
+                    window.fotosPorCampo[campoId] = [];
+                }
+                
+                if (esDeCamara) {
+                    // Si es de la cámara, solo agregar la última foto (la nueva)
+                    const nuevaFoto = files[files.length - 1];
+                    window.fotosPorCampo[campoId].push(nuevaFoto);
+                } else {
+                    // Si es selección de archivos, agregar todas las nuevas fotos
+                    files.forEach(file => {
+                        // Verificar si la foto ya existe (por nombre y tamaño)
+                        const existe = window.fotosPorCampo[campoId].some(foto => 
+                            foto.name === file.name && foto.size === file.size
+                        );
+                        if (!existe) {
+                            window.fotosPorCampo[campoId].push(file);
+                        }
+                    });
+                }
+                
+                // Mostrar todas las fotos del campo
+                mostrarPreviewsFotos(campoId, window.fotosPorCampo[campoId]);
+                // Actualizar el input con todas las fotos
+                actualizarInputFotos(campoId, window.fotosPorCampo[campoId]);
+                
+                // Remover el atributo capture después de usar la cámara
+                if (esDeCamara) {
+                    this.removeAttribute('capture');
+                }
+            }
+        });
+    });
+}
+
+function mostrarPreviewsFotos(campoId, files) {
+    const preview = document.getElementById(`preview_${campoId}`);
+    const grid = document.getElementById(`grid_${campoId}`);
+    
+    // Limpiar previews anteriores
+    grid.innerHTML = '';
+    
+    // Mostrar contador de fotos
+    const contador = document.createElement('div');
+    contador.className = 'foto-counter';
+    contador.style.cssText = `
+        grid-column: 1 / -1;
+        padding: 10px;
+        background: #e9ecef;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 10px;
+    `;
+    contador.textContent = `${files.length} foto${files.length !== 1 ? 's' : ''} seleccionada${files.length !== 1 ? 's' : ''}`;
+    grid.appendChild(contador);
+    
+    files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const fotoItem = document.createElement('div');
+            fotoItem.className = 'foto-item';
+            fotoItem.innerHTML = `
+                <img src="${e.target.result}" alt="Vista previa ${index + 1}">
+                <div class="foto-info">
+                    <small>${file.name}</small>
+                    <small>${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                </div>
+                <button type="button" class="foto-remove" onclick="eliminarFoto(${campoId}, ${index})">×</button>
+            `;
+            grid.appendChild(fotoItem);
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    preview.style.display = 'block';
+}
+
+function abrirCamara(campoId) {
+    const input = document.getElementById(`campo_${campoId}`);
+    input.setAttribute('capture', 'environment');
+    input.click();
+}
+
+
+// Función para actualizar el input con todas las fotos
+function actualizarInputFotos(campoId, files) {
+    const input = document.getElementById(`campo_${campoId}`);
+    const dt = new DataTransfer();
+    files.forEach(file => dt.items.add(file));
+    input.files = dt.files;
+    
+    // Debug: verificar que las fotos se asignaron correctamente
+    console.log(`DEBUG: Input ${campoId} ahora tiene ${input.files.length} archivos`);
+    for (let i = 0; i < input.files.length; i++) {
+        console.log(`  - Archivo ${i+1}: ${input.files[i].name} (${input.files[i].size} bytes)`);
+    }
+}
+
+function limpiarFotos(campoId) {
+    const input = document.getElementById(`campo_${campoId}`);
+    const preview = document.getElementById(`preview_${campoId}`);
+    const grid = document.getElementById(`grid_${campoId}`);
+    
+    // Limpiar el array global
+    if (window.fotosPorCampo && window.fotosPorCampo[campoId]) {
+        window.fotosPorCampo[campoId] = [];
+    }
+    
+    input.value = '';
+    grid.innerHTML = '';
+    preview.style.display = 'none';
+}
+
+function eliminarFoto(campoId, index) {
+    // Eliminar la foto del array global
+    if (window.fotosPorCampo && window.fotosPorCampo[campoId]) {
+        window.fotosPorCampo[campoId].splice(index, 1);
+        
+        // Actualizar el input con las fotos restantes
+        actualizarInputFotos(campoId, window.fotosPorCampo[campoId]);
+        
+        // Actualizar preview
+        if (window.fotosPorCampo[campoId].length > 0) {
+            mostrarPreviewsFotos(campoId, window.fotosPorCampo[campoId]);
+        } else {
+            limpiarFotos(campoId);
+        }
+    }
+}
+
+function inicializarSeleccionMultiple() {
+    document.querySelectorAll('.menu-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const menuIndex = this.dataset.menu;
+            const submenuContainer = document.querySelector(`.submenu-campos[data-menu="${menuIndex}"]`);
+            const selectedOption = this.options[this.selectedIndex];
+            
+            // Limpiar campos anteriores
+            submenuContainer.innerHTML = '';
+            
+            if (selectedOption.value) {
+                const tipoCampo = selectedOption.dataset.tipo;
+                const titulo = selectedOption.value;
+                
+                // Crear campo dinámico según el tipo
+                let campoHTML = '';
+                const campoId = `submenu_${menuIndex}_${Date.now()}`;
+                
+                if (tipoCampo === 'texto') {
+                    campoHTML = `
+                        <div class="form-group">
+                            <label for="${campoId}" class="form-label">${titulo}</label>
+                            <input type="text" id="${campoId}" name="submenu_${menuIndex}_${titulo}" class="form-control">
+                        </div>
+                    `;
+                } else if (tipoCampo === 'fecha') {
+                    campoHTML = `
+                        <div class="form-group">
+                            <label for="${campoId}" class="form-label">${titulo}</label>
+                            <input type="date" id="${campoId}" name="submenu_${menuIndex}_${titulo}" class="form-control">
+                        </div>
+                    `;
+                } else {
+                    campoHTML = `
+                        <div class="form-group">
+                            <label for="${campoId}" class="form-label">${titulo}</label>
+                            <input type="text" id="${campoId}" name="submenu_${menuIndex}_${titulo}" class="form-control">
+                        </div>
+                    `;
+                }
+                
+                submenuContainer.innerHTML = campoHTML;
+            }
+        });
+    });
+}
+
+// Validación del formulario antes de enviar
+document.getElementById('formularioDiligenciar').addEventListener('submit', function(e) {
+    // Verificar campos obligatorios
+    const camposObligatorios = document.querySelectorAll('[required]');
+    let camposFaltantes = [];
+    
+    camposObligatorios.forEach(campo => {
+        if (!campo.value.trim()) {
+            camposFaltantes.push(campo.previousElementSibling.textContent.replace(' *', ''));
+        }
+    });
+    
+    if (camposFaltantes.length > 0) {
+        e.preventDefault();
+        alert('Por favor completa los siguientes campos obligatorios:\n' + camposFaltantes.join('\n'));
+        return false;
+    }
+    
+    // Verificar firmas obligatorias
+    const firmasObligatorias = document.querySelectorAll('.firma-canvas');
+    firmasObligatorias.forEach(canvas => {
+        const campoId = canvas.id.split('_')[1];
+        const campoElement = document.querySelector(`[data-campo-id="${campoId}"]`);
+        const esObligatorio = campoElement.querySelector('.form-label').textContent.includes('*');
+        
+        if (esObligatorio && !document.getElementById(`firma_${campoId}`).value) {
+            e.preventDefault();
+            alert('Por favor completa todas las firmas obligatorias');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

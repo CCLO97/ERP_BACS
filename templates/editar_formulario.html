@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Formulario: {{ formulario.nombre }} - ERP BACS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Editar Formulario</h1>
+        <p>{{ formulario.nombre }}</p>
+    </div>
+
+    <!-- Información del formulario -->
+    <div class="form-container">
+        <form method="POST" class="form">
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="nombre" class="form-label">Nombre del Formulario *</label>
+                    <input type="text" id="nombre" name="nombre" class="form-control" 
+                           value="{{ formulario.nombre }}" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label class="form-label">Estado</label>
+                    <div class="form-check">
+                        <input type="checkbox" id="activo" name="activo" class="form-check-input" 
+                               {% if formulario.activo %}checked{% endif %}>
+                        <label for="activo" class="form-check-label">Formulario activo</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <textarea id="descripcion" name="descripcion" class="form-control" rows="3">{{ formulario.descripcion or '' }}</textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="icon-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Constructor de campos -->
+    <div class="form-container">
+        <div class="constructor-header">
+            <h3><i class="icon-settings"></i> Constructor de Campos</h3>
+            <button type="button" class="btn btn-success" onclick="mostrarModalAgregarCampo()">
+                <i class="icon-plus"></i> Agregar Campo
+            </button>
+        </div>
+
+        <div id="campos-container">
+            {% if formulario.campos %}
+                {% for campo in formulario.campos %}
+                <div class="campo-item" data-campo-id="{{ campo.id }}" data-tipo="{{ campo.tipo_campo }}">
+                    <div class="campo-header">
+                        <div class="campo-info">
+                            <span class="campo-tipo">{{ campo.tipo_campo|title }}</span>
+                            <h4>{{ campo.titulo }}</h4>
+                            {% if campo.obligatorio %}
+                                <span class="badge badge-warning">Obligatorio</span>
+                            {% endif %}
+                        </div>
+                        <div class="campo-actions">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editarCampo({{ campo.id }})" title="Editar campo">
+                                <i class="icon-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarCampo({{ campo.id }})" title="Eliminar campo">
+                                <i class="icon-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% if campo.descripcion %}
+                    <div class="campo-description">
+                        <p>{{ campo.descripcion }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty-campos">
+                <div class="empty-icon">
+                    <i class="icon-plus-circle"></i>
+                </div>
+                <h4>No hay campos agregados</h4>
+                <p>Comienza agregando campos a tu formulario</p>
+                <button type="button" class="btn btn-primary" onclick="mostrarModalAgregarCampo()">
+                    <i class="icon-plus"></i> Agregar Primer Campo
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal para agregar/editar campo -->
+    <div class="modal" id="campoModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="modalTitle">Agregar Campo</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalCampo()" title="Cerrar">
+                    <i class="icon-close"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="campoForm">
+                    <input type="hidden" id="campoId" name="campo_id" value="">
+                    <input type="hidden" id="formularioId" name="formulario_id" value="{{ formulario.id }}">
+                    
+                    <div class="form-group">
+                        <label for="tipoCampo" class="form-label">Tipo de Campo *</label>
+                        <select id="tipoCampo" name="tipo_campo" class="form-control" required onchange="cambiarTipoCampo()">
+                            <option value="">Selecciona un tipo</option>
+                            <option value="texto">Campo de Texto</option>
+                            <option value="textarea">Área de Texto</option>
+                            <option value="fecha">Fecha</option>
+                            <option value="seleccion">Selección Única</option>
+                            <option value="seleccion_multiple">Selección Múltiple</option>
+                            <option value="firma">Firma Digital</option>
+                            <option value="foto">Foto</option>
+                            <option value="texto_informativo">Texto Informativo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tituloCampo" class="form-label">Título del Campo *</label>
+                        <input type="text" id="tituloCampo" name="titulo" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descripcionCampo" class="form-label">Descripción</label>
+                        <textarea id="descripcionCampo" name="descripcion" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" id="obligatorioCampo" name="obligatorio" class="form-check-input">
+                            <label for="obligatorioCampo" class="form-check-label">Campo obligatorio</label>
+                        </div>
+                    </div>
+
+                    <!-- Configuración específica por tipo de campo -->
+                    <div id="configuracionEspecifica" style="display: none;">
+                        <h5>Configuración Específica</h5>
+                        
+                        <!-- Para campos de selección -->
+                        <div id="opcionesSeleccion" style="display: none;">
+                            <label class="form-label">Opciones disponibles</label>
+                            <div id="opcionesContainer">
+                                <div class="opcion-item">
+                                    <input type="text" class="form-control opcion-input" placeholder="Opción 1">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarOpcion(this)">
+                                        <i class="icon-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarOpcion()">
+                                <i class="icon-plus"></i> Agregar Opción
+                            </button>
+                        </div>
+
+                        <!-- Para campos de selección múltiple con submenús -->
+                        <div id="configuracionMultiple" style="display: none;">
+                            <label class="form-label">Configuración de Menús</label>
+                            <div id="menusContainer">
+                                <div class="menu-item">
+                                    <input type="text" class="form-control menu-titulo" placeholder="Título del menú principal">
+                                    <div class="submenu-container">
+                                        <div class="submenu-item">
+                                            <input type="text" class="form-control submenu-titulo" placeholder="Título del submenú">
+                                            <input type="text" class="form-control submenu-campo" placeholder="Tipo de campo (texto, fecha, etc.)">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarSubmenu(this)">
+                                                <i class="icon-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarSubmenu(this)">
+                                        <i class="icon-plus"></i> Agregar Submenú
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarMenu(this)">
+                                        <i class="icon-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarMenu()">
+                                <i class="icon-plus"></i> Agregar Menú Principal
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalCampo()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarCampo()">Guardar Campo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación para eliminar (flotante) -->
+    <div class="modal" id="confirmModal" style="display: none;">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>Confirmar Eliminación</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalConfirmacion()" title="Cerrar">
+                    <i class="icon-close"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar este campo?</p>
+                <div class="text-warning">
+                    <strong>⚠️ Esta acción no se puede deshacer.</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalConfirmacion()">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.constructor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.campo-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: all 0.2s;
+}
+
+.campo-item:hover {
+    background: #e9ecef;
+    border-color: #3498db;
+}
+
+.campo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.campo-info h4 {
+    margin: 5px 0;
+    color: #2c3e50;
+}
+
+.campo-tipo {
+    background: #3498db;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.campo-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.campo-description {
+    margin-top: 10px;
+    color: #666;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+}
+
+.empty-campos {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 3em;
+    margin-bottom: 15px;
+    color: #ccc;
+}
+
+.modal-large {
+    max-width: 800px;
+}
+
+.modal-small {
+    max-width: 400px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.opcion-item, .menu-item, .submenu-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.opcion-input, .menu-titulo, .submenu-titulo, .submenu-campo {
+    flex: 1;
+}
+
+.submenu-container {
+    margin-left: 20px;
+    border-left: 2px solid #e9ecef;
+    padding-left: 15px;
+}
+
+/* Estilos para campos autoajustables */
+.form-control {
+    resize: vertical;
+    min-height: 38px;
+}
+
+textarea.form-control {
+    min-height: 60px;
+    resize: vertical;
+}
+
+.campo-info h4 {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+}
+
+.campo-tipo {
+    word-wrap: break-word;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .campo-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .campo-actions {
+        align-self: flex-end;
+    }
+}
+</style>
+
+<script>
+let campoEditando = null;
+
+function mostrarModalAgregarCampo() {
+    campoEditando = null;
+    document.getElementById('modalTitle').textContent = 'Agregar Campo';
+    document.getElementById('campoForm').reset();
+    document.getElementById('configuracionEspecifica').style.display = 'none';
+    document.getElementById('campoModal').style.display = 'block';
+}
+
+function editarCampo(campoId) {
+    // Obtener datos del campo desde el DOM
+    const campoElement = document.querySelector(`[data-campo-id="${campoId}"]`);
+    const tipoCampo = campoElement.dataset.tipo;
+    const titulo = campoElement.querySelector('h4').textContent;
+    const descripcion = campoElement.querySelector('.campo-description p')?.textContent || '';
+    const esObligatorio = campoElement.querySelector('.badge-warning') !== null;
+    
+    // Llenar el formulario con los datos existentes
+    campoEditando = campoId;
+    document.getElementById('modalTitle').textContent = 'Editar Campo';
+    document.getElementById('campoId').value = campoId;
+    document.getElementById('tipoCampo').value = tipoCampo;
+    document.getElementById('tituloCampo').value = titulo;
+    document.getElementById('descripcionCampo').value = descripcion;
+    document.getElementById('obligatorioCampo').checked = esObligatorio;
+    
+    // Mostrar configuración específica si es necesario
+    cambiarTipoCampo();
+    
+    // Cargar configuración existente si hay
+    if (tipoCampo === 'seleccion') {
+        // Cargar opciones existentes (esto requeriría una llamada AJAX para obtener la configuración)
+        // Por ahora, simplemente mostrar el modal
+    } else if (tipoCampo === 'seleccion_multiple') {
+        // Cargar menús existentes (esto requeriría una llamada AJAX)
+        // Por ahora, simplemente mostrar el modal
+    }
+    
+    document.getElementById('campoModal').style.display = 'block';
+}
+
+function eliminarCampo(campoId) {
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        eliminarCampoConfirmado(campoId);
+    };
+    document.getElementById('confirmModal').style.display = 'block';
+}
+
+function eliminarCampoConfirmado(campoId) {
+    fetch(`/api/formularios/campos/${campoId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar el campo');
+    });
+}
+
+function cambiarTipoCampo() {
+    const tipo = document.getElementById('tipoCampo').value;
+    const configuracion = document.getElementById('configuracionEspecifica');
+    const opcionesSeleccion = document.getElementById('opcionesSeleccion');
+    const configuracionMultiple = document.getElementById('configuracionMultiple');
+    
+    // Ocultar todas las configuraciones específicas
+    opcionesSeleccion.style.display = 'none';
+    configuracionMultiple.style.display = 'none';
+    
+    if (tipo === 'seleccion') {
+        configuracion.style.display = 'block';
+        opcionesSeleccion.style.display = 'block';
+    } else if (tipo === 'seleccion_multiple') {
+        configuracion.style.display = 'block';
+        configuracionMultiple.style.display = 'block';
+    } else if (tipo === 'texto_informativo') {
+        configuracion.style.display = 'none';
+    } else {
+        configuracion.style.display = 'none';
+    }
+}
+
+function agregarOpcion() {
+    const container = document.getElementById('opcionesContainer');
+    const div = document.createElement('div');
+    div.className = 'opcion-item';
+    div.innerHTML = `
+        <input type="text" class="form-control opcion-input" placeholder="Nueva opción">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarOpcion(this)">
+            <i class="icon-trash"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function eliminarOpcion(button) {
+    button.parentElement.remove();
+}
+
+function agregarMenu() {
+    const container = document.getElementById('menusContainer');
+    const div = document.createElement('div');
+    div.className = 'menu-item';
+    div.innerHTML = `
+        <input type="text" class="form-control menu-titulo" placeholder="Título del menú principal">
+        <div class="submenu-container">
+            <div class="submenu-item">
+                <input type="text" class="form-control submenu-titulo" placeholder="Título del submenú">
+                <input type="text" class="form-control submenu-campo" placeholder="Tipo de campo (texto, fecha, etc.)">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarSubmenu(this)">
+                    <i class="icon-trash"></i>
+                </button>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarSubmenu(this)">
+            <i class="icon-plus"></i> Agregar Submenú
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarMenu(this)">
+            <i class="icon-trash"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function agregarSubmenu(button) {
+    const container = button.parentElement.querySelector('.submenu-container');
+    const div = document.createElement('div');
+    div.className = 'submenu-item';
+    div.innerHTML = `
+        <input type="text" class="form-control submenu-titulo" placeholder="Título del submenú">
+        <input type="text" class="form-control submenu-campo" placeholder="Tipo de campo (texto, fecha, etc.)">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarSubmenu(this)">
+            <i class="icon-trash"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function eliminarSubmenu(button) {
+    button.parentElement.remove();
+}
+
+function eliminarMenu(button) {
+    button.parentElement.remove();
+}
+
+function guardarCampo() {
+    const form = document.getElementById('campoForm');
+    const formData = new FormData(form);
+    
+    const data = {
+        tipo_campo: formData.get('tipo_campo'),
+        titulo: formData.get('titulo'),
+        descripcion: formData.get('descripcion'),
+        obligatorio: formData.get('obligatorio') === 'on',
+        configuracion: {}
+    };
+    
+    // Recopilar configuración específica
+    if (data.tipo_campo === 'seleccion') {
+        const opciones = Array.from(document.querySelectorAll('.opcion-input')).map(input => input.value).filter(val => val.trim());
+        data.configuracion.opciones = opciones;
+    } else if (data.tipo_campo === 'seleccion_multiple') {
+        const menus = [];
+        document.querySelectorAll('.menu-item').forEach(menuItem => {
+            const titulo = menuItem.querySelector('.menu-titulo').value;
+            const submenus = [];
+            menuItem.querySelectorAll('.submenu-item').forEach(submenuItem => {
+                const submenuTitulo = submenuItem.querySelector('.submenu-titulo').value;
+                const submenuCampo = submenuItem.querySelector('.submenu-campo').value;
+                if (submenuTitulo.trim() && submenuCampo.trim()) {
+                    submenus.push({
+                        titulo: submenuTitulo,
+                        tipo_campo: submenuCampo
+                    });
+                }
+            });
+            if (titulo.trim() && submenus.length > 0) {
+                menus.push({
+                    titulo: titulo,
+                    submenus: submenus
+                });
+            }
+        });
+        data.configuracion.menus = menus;
+    }
+    
+    // Determinar URL y método según si es edición o creación
+    const campoId = document.getElementById('campoId').value;
+    const url = campoId ? 
+        `/api/formularios/campos/${campoId}` : 
+        `/api/formularios/${formData.get('formulario_id')}/campos`;
+    
+    const method = campoId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al guardar el campo');
+    });
+}
+
+function cerrarModalCampo() {
+    document.getElementById('campoModal').style.display = 'none';
+}
+
+function cerrarModalConfirmacion() {
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+// Cerrar modales al hacer clic fuera de ellos
+window.onclick = function(event) {
+    const campoModal = document.getElementById('campoModal');
+    const confirmModal = document.getElementById('confirmModal');
+    
+    if (event.target === campoModal) {
+        cerrarModalCampo();
+    }
+    if (event.target === confirmModal) {
+        cerrarModalConfirmacion();
+    }
+}
+</script>
+{% endblock %}
