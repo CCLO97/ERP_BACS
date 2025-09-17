@@ -3005,11 +3005,6 @@ def generar_pdf_simple(respuesta_formulario):
                                         new_width = img.width
                                         new_height = img.height
                                     
-                                    # Buscar imagen en la nueva ubicación organizada
-                                    formulario_nombre = secure_filename("formularios")
-                                    imagenes_dir = os.path.join(app.config['UPLOAD_FOLDER'], formulario_nombre, 'imagenes')
-                                    original_path = os.path.join(imagenes_dir, foto_filename)
-                                    
                                     # Guardar imagen temporalmente con máxima calidad y DPI original
                                     temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{foto_filename}')
                                     img.save(temp_path, quality=100, optimize=False)
@@ -3322,22 +3317,71 @@ def generar_pdf_formulario(respuesta_formulario):
                 # Procesar imagen de la firma
                 if respuesta_campo.valor_archivo:
                     try:
-                        # Agregar información del firmante
-                        info_firmante = f"""
-                        <b>Nombre:</b> {respuesta_campo.nombre_firmante or 'No especificado'}<br/>
-                        <b>Documento:</b> {respuesta_campo.documento_firmante or 'No especificado'}<br/>
-                        <b>Empresa:</b> {respuesta_campo.empresa_firmante or 'No especificado'}<br/>
-                        <b>Cargo:</b> {respuesta_campo.cargo_firmante or 'No especificado'}
-                        """
-                        
-                        info_paragraph = Paragraph(info_firmante, value_style)
-                        story.append(info_paragraph)
-                        
-                        # Procesar imagen de la firma usando archivo si ya fue guardado en POST
-                        print(f"DEBUG: === LLAMANDO procesar_firma_png para campo {campo.id} ===")
-                        print(f"DEBUG: Valor archivo (firma): {respuesta_campo.valor_archivo[:80]}...")
-                        procesar_firma_png(respuesta_campo.valor_archivo, campo, story, value_style)
-                        
+                        # Construir información del firmante (en filas)
+                        lineas_info = []
+                        if respuesta_campo.nombre_firmante:
+                            lineas_info.append(f"<b>Nombre:</b> {respuesta_campo.nombre_firmante}")
+                        if respuesta_campo.documento_firmante:
+                            lineas_info.append(f"<b>Documento:</b> {respuesta_campo.documento_firmante}")
+                        if respuesta_campo.empresa_firmante:
+                            lineas_info.append(f"<b>Empresa:</b> {respuesta_campo.empresa_firmante}")
+                        if respuesta_campo.cargo_firmante:
+                            lineas_info.append(f"<b>Cargo:</b> {respuesta_campo.cargo_firmante}")
+                        if respuesta_campo.telefono_firmante:
+                            lineas_info.append(f"<b>Teléfono:</b> {respuesta_campo.telefono_firmante}")
+
+                        info_para = Paragraph("<br/>".join(lineas_info) if lineas_info else "Sin datos del firmante", value_style)
+
+                        # Determinar ruta de la firma PNG
+                        posible_path = os.path.join(app.config['UPLOAD_FOLDER'], respuesta_campo.valor_archivo) if not os.path.isabs(respuesta_campo.valor_archivo) else respuesta_campo.valor_archivo
+                        png_path = None
+                        if os.path.exists(posible_path):
+                            png_path = posible_path
+                            print(f"DEBUG: Firma para tabla (ruta existente): {png_path}")
+                        else:
+                            # Fallback: si viniera base64, decodificar y guardar
+                            import base64
+                            from io import BytesIO
+                            if ',' in respuesta_campo.valor_archivo:
+                                _, encoded = respuesta_campo.valor_archivo.split(',', 1)
+                            else:
+                                encoded = respuesta_campo.valor_archivo
+                            image_bytes = base64.b64decode(encoded)
+                            img = PILImage.open(BytesIO(image_bytes)).convert('RGBA')
+                            bg = PILImage.new("RGB", img.size, (255, 255, 255))
+                            bg.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
+                            firmas_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'formularios', 'firmas')
+                            os.makedirs(firmas_dir, exist_ok=True)
+                            from datetime import datetime
+                            png_path = os.path.join(firmas_dir, f'firma_{campo.id}_{respuesta_formulario.id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png')
+                            bg.save(png_path, format='PNG')
+                            print(f"DEBUG: Firma guardada en fallback para tabla: {png_path}")
+
+                        # Crear imagen escalada de firma
+                        from reportlab.lib.pagesizes import A4
+                        img_tmp = PILImage.open(png_path)
+                        img_w, img_h = img_tmp.size
+                        page_w, _ = A4
+                        max_width = min(page_w * 0.4, 300)
+                        scale = max_width / img_w
+                        draw_w = img_w * scale
+                        draw_h = img_h * scale
+                        firma_image = Image(png_path, width=draw_w, height=draw_h)
+
+                        # Crear tabla 2 columnas: info (izq) | firma (der)
+                        tabla = Table([[info_para, firma_image]], colWidths=[page_w - max_width - 60, max_width])
+                        tabla.setStyle(TableStyle([
+                            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                            ('TOPPADDING', (0, 0), (-1, -1), 6),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#2c3e50')),
+                        ]))
+                        story.append(tabla)
+                        story.append(Spacer(1, 12))
+
                         valor = ""
                         
                     except Exception as firma_error:
